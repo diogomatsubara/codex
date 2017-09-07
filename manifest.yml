@@ -1,0 +1,10 @@
+---
+applications:
+- name: codex
+  memory: 64M
+  disk_quota: 512M
+  buildpack: staticfile_buildpack
+  path: build
+  routes:
+  - route: www.starkandwayne.com/codex
+  - route: starkandwayne.com/codex
