@@ -1,0 +1,15 @@
+# Also ignore these folders and files when building app.
+
+# folders
+docs
+terraform
+
+# files
+.direnv
+.git
+.envrc
+Makefile
+manifest.yml
+README.rst
+requirements.txt
+Staticfile
