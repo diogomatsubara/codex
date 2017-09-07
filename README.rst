@@ -37,31 +37,33 @@ Write
 About
 -----
 
-+------------------+----------------------------------------------+
-| Name             | Purpose                                      |
-+==================+==============================================+
-| archive/         | **codex-v1** source files                    |
-+------------------+----------------------------------------------+
-| docs/            | **sphinx-doc** source files                  |
-+------------------+----------------------------------------------+
-| terraform/       | **terraform** provisioning scripts           |
-+------------------+----------------------------------------------+
-| .cfignore        | **cf** optimize deployment parameters        |
-+------------------+----------------------------------------------+
-| .envrc           | **direnv** builds a python virtual env       |
-+------------------+----------------------------------------------+
-| .gitignore       | **git** defines files to ignore in repo      |
-+------------------+----------------------------------------------+
-| Makefile         | **sphinx-doc** builds ``docs`` source        |
-+------------------+----------------------------------------------+
-| README.rst       | this file                                    |
-+------------------+----------------------------------------------+
-| Staticfile       | **cf** defines project as Staticfile app     |
-+------------------+----------------------------------------------+
-| manifest.yml     | **cf** configures app runtime parameters     |
-+------------------+----------------------------------------------+
-| requirements.txt | **python** dependencies for project          |
-+------------------+----------------------------------------------+
++------------------+-----------------------------------------------------+
+| Name             | Purpose                                             |
++==================+=====================================================+
+| archive/         | **codex-v1** source files                           |
++------------------+-----------------------------------------------------+
+| build/           | **sphinx-doc** local only, use ``make`` for outputs |
++------------------+-----------------------------------------------------+
+| docs/            | **sphinx-doc** source files                         |
++------------------------+-----------------------------------------------+
+| terraform/       | **terraform** provisioning scripts                  |
++------------------------+-----------------------------------------------+
+| .cfignore        | **cf** optimize deployment parameters               |
++------------------------+-----------------------------------------------+
+| .envrc           | **direnv** builds a python virtual env              |
++------------------+-----------------------------------------------------+
+| .gitignore       | **git** defines files to ignore in repo             |
++------------------+-----------------------------------------------------+
+| Makefile         | **sphinx-doc** builds ``docs`` source               |
++------------------+-----------------------------------------------------+
+| README.rst       | this file                                           |
++------------------+-----------------------------------------------------+
+| Staticfile       | **cf** defines project as Staticfile app            |
++------------------+-----------------------------------------------------+
+| manifest.yml     | **cf** configures app runtime parameters            |
++------------------+-----------------------------------------------------+
+| requirements.txt | **python** dependencies for project                 |
++------------------+-----------------------------------------------------+
 
 Codex uses sphinx-doc_, the python documentation generator, to build the
 website into a static output of HTML webpages.  Then when the application is
