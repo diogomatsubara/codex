@@ -62,10 +62,9 @@ About
 | requirements.txt | **python** dependencies for project          |
 +------------------+----------------------------------------------+
 
-Codex_ uses sphinx-doc_, the python documentation generator, to build the
+Codex uses sphinx-doc_, the python documentation generator, to build the
 website into a static output of HTML webpages.  Then when the application is
 deployed it, it copies the static output to a Cloud Foundry droplet and starts
 an application instance.
 
 .. _sphinx-doc: http://www.sphinx-doc.org/en/stable/index.html
-.. _Codex:      http://www.starkandwayne.com/codex
