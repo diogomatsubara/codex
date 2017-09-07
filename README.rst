@@ -28,7 +28,7 @@ Write
 
 	sphinx-autobuild docs build/html
 
-5. Open the link provided by ``sphinx-autobuild`` for the local codex.
+5. Open the link provided by ``sphinx-autobuild`` for the local codex at http://127.0.0.1:8000.
 
 .. _direnv: https://direnv.net
 
