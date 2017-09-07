@@ -4,8 +4,6 @@
 Stark & Wayne Codex
 ===================
 
-.. warning:: You better grab an extra pair of socks.  Cause this doc is about to blow your socks off.
-
 Welcome to Stark & Wayne Codex.  This is a prescription for your very own Cloud Foundry, running on whichever IaaS you choose.
 
 We're going to begin by outlining a few **key concepts** and the benefits of **codex**.
