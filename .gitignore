@@ -1,7 +1,15 @@
 # Mac Desktop Services Store file
 .DS_Store
 
+# created by python virtualenv
+.direnv
+
+# do not commit the build folder, is compiled upon changes
+build
+
 # Terraform files
+*.terraform
+*.terraform.tfstate.lock.info
 *.backup
 *.tfvars
 *.tfplan
