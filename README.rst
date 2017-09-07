@@ -33,6 +33,8 @@ Write
 .. _direnv: https://direnv.net
 .. _codex:  http://127.0.0.1:8000
 
+.. image:: docs/images/codex-local-setup.gif
+
 About
 -----
 
