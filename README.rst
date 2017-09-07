@@ -4,9 +4,7 @@ codex
 Read
 ----
 
-http://www.starkandwayne.com/codex_
-
-.. _http://www.starkandwayne.com/codex
+http://www.starkandwayne.com/codex
 
 Write
 -----
