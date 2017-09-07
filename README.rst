@@ -17,7 +17,7 @@ Write
 
 ::
 
-	git clone https://github.com/starkandwayne/codex.git
+	git clone git@github.com:starkandwayne/codex.git
 	cd codex
 	direnv allow .
 	pip install -r requirements.txt
