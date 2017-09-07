@@ -68,4 +68,4 @@ deployed it, it copies the static output to a Cloud Foundry droplet and starts
 an application instance.
 
 .. _sphinx-doc: http://www.sphinx-doc.org/en/stable/index.html
-.. _codex:      http://www.starkandwayne.com/codex
+.. _Codex:      http://www.starkandwayne.com/codex
