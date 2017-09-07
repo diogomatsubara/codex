@@ -44,6 +44,30 @@ Benefits of Codex
 
    aws/guide
 
+.. _azure:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Microsoft Azure
+
+   azure/guide
+
+.. _google:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Google Cloud Platform
+
+   gcp/guide
+
+.. _openstack:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: OpenStack
+
+   openstack/guide
+
 .. _developer:
 
 .. toctree::
