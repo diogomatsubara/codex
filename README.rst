@@ -17,7 +17,7 @@ Write
 
 ::
 
-	git clone https://github.com/starkandwayne/codex.git
+	git clone git@github.com:starkandwayne/codex.git
 	cd codex
 	direnv allow .
 	pip install -r requirements.txt
@@ -28,10 +28,9 @@ Write
 
 	sphinx-autobuild docs build/html
 
-5. Open the link provided by ``sphinx-autobuild`` for the local codex_.
+5. Open the link provided by ``sphinx-autobuild`` for the local codex at http://127.0.0.1:8000.
 
 .. _direnv: https://direnv.net
-.. _codex:  http://127.0.0.1:8000
 
 .. image:: docs/images/codex-local-setup.gif
 
