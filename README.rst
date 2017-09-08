@@ -77,8 +77,8 @@ Deploy
 
 The Makefile at the root of this project has a *deploy* Makefile target.
 
-When calling this target with `make deploy` it will use the `sphinx` python
-module and the `cf-cli` commands to build and push the a sphinx-doc website.
+When calling this target with ``make deploy`` it will use the ``sphinx`` python
+module and the ``cf-cli`` commands to build and push the a sphinx-doc website.
 
 1. Login to Cloud Foundry, target the **starkandwayne** organization, with
 the **codex** space.
