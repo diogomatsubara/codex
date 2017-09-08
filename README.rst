@@ -75,7 +75,7 @@ an application instance.
 Deploy
 ------
 
-The Makefile at the root of this project has a _deploy_ Makefile target.
+The Makefile at the root of this project has a *deploy* Makefile target.
 
 When calling this target with `make deploy` it will use the `sphinx` python
 module and the `cf-cli` commands to build and push the a sphinx-doc website.
