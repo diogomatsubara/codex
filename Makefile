@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 # -a  write all files; default is to only write new and changed files
-SPHINXOPTS    = -a
+SPHINXOPTS    = -a -j 2
 SPHINXBUILD   = python -msphinx
 SPHINXPROJ    = codex
 SOURCEDIR     = docs
@@ -20,6 +20,10 @@ help:
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+# Copy $(BUILDDIR)/html $(BUILDDIR)/codex because the ultimate destination is
+# a subfolder website www.starkandwayne.com/codex
+# This, in combination with the manifest.yml setting "path: build" put the
+# static files in the right place.
 deploy:
 	$(SPHINXBUILD) -M html "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 	rm -rf $(BUILDDIR)/codex
