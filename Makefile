@@ -2,7 +2,8 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    =
+# -a  write all files; default is to only write new and changed files
+SPHINXOPTS    = -a
 SPHINXBUILD   = python -msphinx
 SPHINXPROJ    = codex
 SOURCEDIR     = docs
