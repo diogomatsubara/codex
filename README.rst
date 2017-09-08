@@ -71,3 +71,24 @@ deployed it, it copies the static output to a Cloud Foundry droplet and starts
 an application instance.
 
 .. _sphinx-doc: http://www.sphinx-doc.org/en/stable/index.html
+
+Deploy
+------
+
+The Makefile at the root of this project has a _deploy_ Makefile target.
+
+When calling this target with `make deploy` it will use the `sphinx` python
+module and the `cf-cli` commands to build and push the a sphinx-doc website.
+
+1. Login to Cloud Foundry, target the **starkandwayne** organization, with
+the **codex** space.
+
+::
+
+	cf login -a https://api.run.pivotal.io -o starkandwayne -s codex
+
+2. To deploy codex, in the root of the project run:
+
+::
+
+	make deploy
