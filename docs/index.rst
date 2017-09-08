@@ -67,11 +67,3 @@ Benefits of Codex
    :caption: OpenStack
 
    openstack/guide
-
-.. _developer:
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Developer
-
-   developer/setup
