@@ -162,6 +162,11 @@ resource "aws_route_table" "internal" {
   tags { Name = "${var.aws_vpc_name}-internal" }
 }
 
+resource "aws_vpc_endpoint" "internal-s3" {
+  vpc_id       = "${aws_vpc.default.id}"
+  service_name = "com.amazonaws.${var.aws_region}.s3"
+  route_table_ids = ["${aws_route_table.internal.id}"]
+}
 
 
  ######  ##     ## ########  ##    ## ######## ########  ######
