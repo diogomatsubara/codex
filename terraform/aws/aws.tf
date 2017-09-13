@@ -64,26 +64,26 @@ variable "aws_route53_prod_hosted_zone_id"    { default = "" } # PROD Hosted Zon
 # These are the region-specific IDs for the Amazon-suggested
 # AMI for running a NAT instance inside of a VPC:
 #
-#    amzn-ami-vpc-nat-hvm-2017.03.0.20170417-x86_64-ebs
+#    amzn-ami-vpc-nat-hvm-2017.03.1.20170812-x86_64-ebs
 #
 # The username to log into the nat box is `ec2-user'
 
 variable "aws_nat_ami" {
   default = {
-    ap-northeast-1 = "ami-6c3c130b"
-    ap-northeast-2 = "ami-2e15c740"
-    ap-south-1     = "ami-85c1b2ea"
-    ap-southeast-1 = "ami-ae5ce5cd"
-    ap-southeast-2 = "ami-242f2647"
-    ca-central-1   = "ami-c8db67ac"
-    eu-central-1   = "ami-0469bb6b"
-    eu-west-1      = "ami-5bc6c23d"
-    eu-west-2      = "ami-17c4d073"
-    sa-east-1      = "ami-93ccaeff"
-    us-east-1      = "ami-258e1f33"
-    us-east-2      = "ami-6793b702"
-    us-west-1      = "ami-eeba9f8e"
-    us-west-2      = "ami-8437a5e4"
+    ap-northeast-1 = "ami-c4887fa2"
+    ap-northeast-2 = "ami-a462bbca"
+    ap-south-1     = "ami-96a9d3f9"
+    ap-southeast-1 = "ami-40bb2123"
+    ap-southeast-2 = "ami-ef051d8c"
+    ca-central-1   = "ami-a1be00c5"
+    eu-central-1   = "ami-eb66cf84"
+    eu-west-1      = "ami-f1d22188"
+    eu-west-2      = "ami-868190e2"
+    sa-east-1      = "ami-9b7504f7"
+    us-east-1      = "ami-a7fdcadc"
+    us-east-2      = "ami-4986a62c"
+    us-west-1      = "ami-4986a62c"
+    us-west-2      = "ami-4da24035"
   }
 }
 
@@ -93,26 +93,26 @@ variable "aws_nat_ami" {
 # These are the region-specific IDs for an
 # HVM-compatible Ubuntu image:
 #
-#    ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20170516
+#    ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-20170811
 #
 # The username to log into the bastion is `ubuntu'
 
 variable "aws_ubuntu_ami" {
   default = {
-    ap-northeast-1 = "ami-1de1df7a"
-    ap-northeast-2 = "ami-6722ff09"
-    ap-south-1     = "ami-4fa4d920"
-    ap-southeast-1 = "ami-93ef68f0"
-    ap-southeast-2 = "ami-1e01147d"
-    ca-central-1   = "ami-e273cf86"
-    eu-central-1   = "ami-a74c95c8"
-    eu-west-1      = "ami-6c101b0a"
-    eu-west-2      = "ami-056d7a61"
-    sa-east-1      = "ami-4bd8b727"
-    us-east-1      = "ami-20631a36"
-    us-east-2      = "ami-a5b196c0"
-    us-west-1      = "ami-9fe6c7ff"
-    us-west-2      = "ami-45224425"
+    ap-northeast-1 = "ami-0417e362"
+    ap-northeast-2 = "ami-536ab33d"
+    ap-south-1     = "ami-df413bb0"
+    ap-southeast-1 = "ami-9f28b3fc"
+    ap-southeast-2 = "ami-bb1901d8"
+    ca-central-1   = "ami-a9c27ccd"
+    eu-central-1   = "ami-958128fa"
+    eu-west-1      = "ami-674cbc1e"
+    eu-west-2      = "ami-03998867"
+    sa-east-1      = "ami-a41869c8"
+    us-east-1      = "ami-1d4e7a66"
+    us-east-2      = "ami-dbbd9dbe"
+    us-west-1      = "ami-969ab1f6"
+    us-west-2      = "ami-8803e0f0"
   }
 }
 
@@ -162,7 +162,11 @@ resource "aws_route_table" "internal" {
   tags { Name = "${var.aws_vpc_name}-internal" }
 }
 
-
+resource "aws_vpc_endpoint" "internal-s3" {
+  vpc_id       = "${aws_vpc.default.id}"
+  service_name = "com.amazonaws.${var.aws_region}.s3"
+  route_table_ids = ["${aws_route_table.internal.id}"]
+}
 
  ######  ##     ## ########  ##    ## ######## ########  ######
 ##    ## ##     ## ##     ## ###   ## ##          ##    ##    ##
