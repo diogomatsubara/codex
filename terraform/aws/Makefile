@@ -7,6 +7,7 @@ OUT_FILE   := properties.yml
 all: manifest deploy
 
 manifest:
+	terraform init
 	terraform get -update
 	terraform plan -var-file ${VARS_FILE} -out ${PLAN_FILE}
 
