@@ -9,28 +9,21 @@ http://www.starkandwayne.com/codex
 Write
 -----
 
-1. Install direnv_.
+1. Install docker_.
 
-2. Install virtualenv python package: ``pip install virtualenv``.
-
-3. Run these steps in order to get the source, setup a ``virtualenv``, and install python module dependencies.
+2. Clone the codex repository locally
 
 ::
+	git clone git@github.com:starkandwayne/codex.git && cd codex
 
-	git clone git@github.com:starkandwayne/codex.git
-	cd codex
-	direnv allow .
-	pip install -r requirements.txt
-
-4. Run the ``sphinx-autobuild`` command and it will watch for changes and create a local server of the build folder.
+3. Build and run the docker container with the latest source ( Note that you can also run ``make build`` to only build or ``make run`` to directly run a previous built codex image ).
 
 ::
+	make docker
 
-	sphinx-autobuild docs build/html
+4. Open codex at http://127.0.0.1:8000 in your browser
 
-5. Open the link provided by ``sphinx-autobuild`` for the local codex at http://127.0.0.1:8000.
-
-.. _direnv: https://direnv.net
+.. _docker: https://www.docker.com/
 
 .. image:: docs/images/codex-local-setup.gif
 
