@@ -37,5 +37,4 @@ docker-build:
 	docker build -t codex .
 
 docker-run:
-	docker run --name=codex -p 127.0.0.1:8000:8000 -v $${PWD}:/codex codex:latest
-	
+	docker run --rm --name=codex -p 127.0.0.1:8000:8000 -v $${PWD}:/codex codex:latest
