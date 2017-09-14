@@ -11,17 +11,17 @@ Write
 
 1. Install docker_.
 
-2. Clone the codex repository locally
+2. Clone the codex repository locally::
 
-::
 	git clone git@github.com:starkandwayne/codex.git && cd codex
 
-3. Build and run the docker container with the latest source ( Note that you can also run ``make build`` to only build or ``make run`` to directly run a previous built codex image ).
+3. Build and run the docker container with the latest source::
 
-::
 	make docker
 
-4. Open codex at http://127.0.0.1:8000 in your browser
+( Note that you can also run ``make build`` to only build or ``make run`` to directly run a previous built codex image )
+
+4. Open codex at http://127.0.0.1:8000 in your browser. Note that changes that are made locally will be reflected in the browser upon refresh.
 
 .. _docker: https://www.docker.com/
 
