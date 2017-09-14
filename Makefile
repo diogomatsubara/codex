@@ -30,3 +30,12 @@ deploy:
 	cp -R $(BUILDDIR)/html $(BUILDDIR)/codex
 	cf push $(SPHINXPROJ)
 	rm -rf $(BUILDDIR)/codex
+
+docker: docker-build docker-run
+
+docker-build:
+	docker build -t codex .
+
+docker-run:
+	docker run --name=codex -p 127.0.0.1:8000:8000 -v $${PWD}:/codex codex:latest
+	
