@@ -5,8 +5,6 @@ docs
 terraform
 
 # files
-.direnv
-.git
 .envrc
 Makefile
 manifest.yml
