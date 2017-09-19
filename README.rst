@@ -25,8 +25,6 @@ Write
 
 .. _docker: https://www.docker.com/
 
-.. image:: docs/images/codex-local-setup.gif
-
 About
 -----
 
