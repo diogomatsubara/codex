@@ -13,6 +13,8 @@ variable "client_id" {}
 variable "client_secret" {}
 variable "tenant_id" {}
 
+variable "prefix" { default="codex"}
+
 ##############################################################
 
 provider "azurerm" {
@@ -33,7 +35,7 @@ resource "azurerm_resource_group" "default" {
 #############################################################
 
 resource "azurerm_virtual_network" "default" {
-    name = "codex_virtual_network"
+    name = "${var.prefix}_virtual_network"
     address_space = ["${var.network}.0.0/16"]
     location = "${var.azure_region}"
     resource_group_name = "${azurerm_resource_group.default.name}"
@@ -505,8 +507,8 @@ resource "azurerm_subnet" "staging-cf-core-1" {
     address_prefix = "${var.network}.37.0/24"
     route_table_id = "${azurerm_route_table.external.id}"
 }
-output "azure.network.staging-cf-core-0.subnet" {
-  value = "${azurerm_subnet.staging-cf-core-0.id}"
+output "azure.network.staging-cf-core-1.subnet" {
+  value = "${azurerm_subnet.staging-cf-core-1.id}"
 }
 
 resource "azurerm_subnet" "staging-cf-core-2" {
@@ -535,7 +537,7 @@ resource "azurerm_subnet" "staging-cf-runtime-0" {
     route_table_id = "${azurerm_route_table.external.id}"
 }
 output "azure.network.staging-cf-runtime-0.subnet" {
-  value = "${azurerm_subnet.staging-cf-runtime-0.id}"
+    value = "${azurerm_subnet.staging-cf-runtime-0.id}"
 }
 
 resource "azurerm_subnet" "staging-cf-runtime-1" {
@@ -546,7 +548,7 @@ resource "azurerm_subnet" "staging-cf-runtime-1" {
     route_table_id = "${azurerm_route_table.external.id}"
 }
 output "azure.network.staging-cf-runtime-1.subnet" {
-  value = "${azurerm_subnet.staging-cf-runtime-1.id}"
+    value = "${azurerm_subnet.staging-cf-runtime-1.id}"
 }
 
 resource "azurerm_subnet" "staging-cf-runtime-2" {
@@ -557,7 +559,7 @@ resource "azurerm_subnet" "staging-cf-runtime-2" {
     route_table_id = "${azurerm_route_table.external.id}"
 }
 output "azure.network.staging-cf-runtime-2.subnet" {
-  value = "${azurerm_subnet.staging-cf-runtime-2.id}"
+    value = "${azurerm_subnet.staging-cf-runtime-2.id}"
 }
 
 
@@ -575,8 +577,8 @@ resource "azurerm_subnet" "staging-cf-svc-0" {
     address_prefix = "${var.network}.42.0/24"
     route_table_id = "${azurerm_route_table.external.id}"
 }
-output "azure.network.staging-cf-runtime-0.subnet" {
-  value = "${azurerm_subnet.staging-cf-svc-0.id}"
+output "azure.network.staging-cf-svc-0.subnet" {
+    value = "${azurerm_subnet.staging-cf-svc-0.id}"
 }
 
 resource "azurerm_subnet" "staging-cf-svc-1" {
@@ -586,8 +588,8 @@ resource "azurerm_subnet" "staging-cf-svc-1" {
     address_prefix = "${var.network}.43.0/24"
     route_table_id = "${azurerm_route_table.external.id}"
 }
-output "azure.network.staging-cf-runtime-1.subnet" {
-  value = "${azurerm_subnet.staging-cf-svc-1.id}"
+output "azure.network.staging-cf-svc-1.subnet" {
+    value = "${azurerm_subnet.staging-cf-svc-1.id}"
 }
 
 resource "azurerm_subnet" "staging-cf-svc-2" {
@@ -597,8 +599,8 @@ resource "azurerm_subnet" "staging-cf-svc-2" {
     address_prefix = "${var.network}.44.0/24"
     route_table_id = "${azurerm_route_table.external.id}"
 }
-output "azure.network.staging-cf-runtime-2.subnet" {
-  value = "${azurerm_subnet.staging-cf-svc-2.id}"
+output "azure.network.staging-cf-svc-2.subnet" {
+    value = "${azurerm_subnet.staging-cf-svc-2.id}"
 }
 
 ###############################################################
@@ -966,14 +968,14 @@ resource "azurerm_network_interface" "nat" {
 }
 
 resource "azurerm_storage_account" "nat" {
-    name = "nataccount"
+    name = "${var.prefix}nataccount"
     resource_group_name = "${azurerm_resource_group.default.name}"
     location = "${var.azure_region}"
     account_type = "Standard_LRS"
 }
 
 resource "azurerm_storage_container" "nat" {
-    name = "natcontainer"
+    name = "${var.prefix}natcontainer"
     resource_group_name = "${azurerm_resource_group.default.name}"
     storage_account_name = "${azurerm_storage_account.nat.name}"
     container_access_type = "private"
@@ -1052,14 +1054,14 @@ resource "azurerm_network_interface" "bastion" {
 }
 
 resource "azurerm_storage_account" "bastion" {
-    name = "bastionaccount"
+    name = "${var.prefix}bastionaccount"
     resource_group_name = "${azurerm_resource_group.default.name}"
     location = "${var.azure_region}"
     account_type = "Standard_LRS"
 }
 
 resource "azurerm_storage_container" "bastion" {
-    name = "bastioncontainer"
+    name = "${var.prefix}bastioncontainer"
     resource_group_name = "${azurerm_resource_group.default.name}"
     storage_account_name = "${azurerm_storage_account.bastion.name}"
     container_access_type = "private"

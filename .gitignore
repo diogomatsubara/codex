@@ -20,3 +20,7 @@ properties.yml
 
 # SSH key file
 bosh.pem
+
+#IntelliJ
+.idea
+*.iml
