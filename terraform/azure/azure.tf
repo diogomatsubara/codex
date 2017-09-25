@@ -999,8 +999,8 @@ resource "azurerm_virtual_machine" "nat" {
     }
 
     storage_os_disk {
-        name = "myosdisk1"
-        vhd_uri = "${azurerm_storage_account.nat.primary_blob_endpoint}${azurerm_storage_container.nat.name}/myosdisk1.vhd"
+        name = "natosdisk"
+        managed_disk_type = "Standard_LRS"
         caching = "ReadWrite"
         create_option = "FromImage"
     }
@@ -1041,7 +1041,7 @@ resource "azurerm_public_ip" "bastionip" {
 
 resource "azurerm_network_interface" "bastion" {
     name = "bastionNetworkInterface"
-    location = "${var.azure_region}"
+    location = "West US"
     resource_group_name = "${azurerm_resource_group.default.name}"
 
     ip_configuration {
@@ -1085,8 +1085,8 @@ resource "azurerm_virtual_machine" "bastion" {
     }
 
     storage_os_disk {
-        name = "myosdisk1"
-        vhd_uri = "${azurerm_storage_account.bastion.primary_blob_endpoint}${azurerm_storage_container.bastion.name}/myosdisk1.vhd"
+        name = "bastionosdisk"
+        managed_disk_type = "Standard_LRS"
         caching = "ReadWrite"
         create_option = "FromImage"
     }
