@@ -986,7 +986,7 @@ resource "azurerm_storage_container" "nat" {
 resource "azurerm_virtual_machine" "nat" {
 
     name = "natvm"
-    location = "West US"
+    location = "${var.azure_region}"
     resource_group_name = "${azurerm_resource_group.default.name}"
     network_interface_ids = ["${azurerm_network_interface.nat.id}"]
     vm_size = "Standard_A0"
@@ -1072,7 +1072,7 @@ resource "azurerm_storage_container" "bastion" {
 resource "azurerm_virtual_machine" "bastion" {
 
     name = "bastionvm"
-    location = "West US"
+    location = "${var.azure_region}"
     resource_group_name = "${azurerm_resource_group.default.name}"
     network_interface_ids = ["${azurerm_network_interface.bastion.id}"]
     vm_size = "Standard_A0"
