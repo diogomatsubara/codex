@@ -1021,8 +1021,9 @@ resource "azurerm_virtual_machine" "nat" {
 
 }
 
-
-
+output "box.nat.public" {
+  value = "${azurerm_public_ip.natip.ip_address}"
+}
 
 ########     ###     ######  ######## ####  #######  ##    ##
 ##     ##   ## ##   ##    ##    ##     ##  ##     ## ###   ##
@@ -1105,4 +1106,8 @@ resource "azurerm_virtual_machine" "bastion" {
         environment = "staging"
     }
 
+}
+
+output "box.bastion.public" {
+  value = "${azurerm_public_ip.bastionip.ip_address}"
 }
