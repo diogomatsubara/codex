@@ -1041,7 +1041,7 @@ resource "azurerm_public_ip" "bastionip" {
 
 resource "azurerm_network_interface" "bastion" {
     name = "bastionNetworkInterface"
-    location = "West US"
+    location = "${var.azure_region}"
     resource_group_name = "${azurerm_resource_group.default.name}"
 
     ip_configuration {
