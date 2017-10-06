@@ -1016,6 +1016,8 @@ resource "azurerm_virtual_machine" "nat" {
     }
 
     tags {
+	name = "nat"
+        role = "nat"
         environment = "staging"
     }
 
@@ -1103,6 +1105,8 @@ resource "azurerm_virtual_machine" "bastion" {
     }
 
     tags {
+	name = "bastion"
+        role = "bastion"
         environment = "staging"
     }
 
