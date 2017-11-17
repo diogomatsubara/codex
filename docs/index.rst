@@ -44,6 +44,14 @@ Benefits of Codex
 
    aws/guide
 
+.. _vsphere:
+
+.. toctree::
+   :maxdepth: 2
+   :caption: vSphere
+
+   vsphere/guide
+
 .. _azure:
 
 .. toctree::
