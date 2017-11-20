@@ -1046,137 +1046,116 @@ We'll start out with the Genesis template for SHIELD:
 ::
 
     $ cd ~/ops
-    $ genesis new deployment --template shield
+    $ genesis init --kit shield
     $ cd shield-deployments
 
-Now we can set up our ``us-west-2`` site using the ``aws`` template,
-with a ``proto`` environment inside of it:
+::
+
+    $ genesis init -k bosh
+    $ cd ~/deployments/bosh-deployments
+
+Next, create a new deployment named `uswest2-proto-bosh` by running the following
+Genesis command.
 
 ::
 
-    $ genesis new site --template aws us-west-2
-    $ genesis new env us-west-2 proto
-    $ cd us-west-2/proto
+    $ genesis new uswest2-proto
 
-Next, we ``make manifest`` and see what we need to fill in.
-
-::
-
-    $ make manifest
-    5 error(s) detected:
-     - $.compilation.cloud_properties.availability_zone: What availability zone is SHIELD deployed to?
-     - $.meta.az: What availability zone is SHIELD deployed to?
-     - $.networks.shield.subnets: Specify your shield subnet
-     - $.properties.shield.daemon.ssh_private_key: Specify the SSH private key that the daemon will use to talk to the agents
-     - $.resource_pools.small.cloud_properties.availability_zone: What availability zone is SHIELD deployed to?
-
-
-    Failed to merge templates; bailing...
-    Makefile:22: recipe for target 'manifest' failed
-    make: *** [manifest] Error 5
-
-By now, this should be old hat. According to the `Network
-Plan <https://github.com/starkandwayne/codex/blob/master/network.md>`__,
-the SHIELD deployment belongs in the **10.4.1.32/28** network, in zone 1
-(a). Let's put that information into ``properties.yml``:
+Next, you only need to answer all the questions prompted for you, a customized
+configuration file will be automatically generated for you according to your answers.
+Let's walk through all the questions.
 
 ::
 
-    $ cat > properties.yml <<EOF
-    ---
-    meta:
-      az: us-west-2a
-    EOF
+   Generating new environment uswest-2-proto...
 
-As we found with Vault, the ``/28`` range is actually in it's outer
-``/24`` range, since we're just using the ``/28`` subdivision for
-convenience.
+   Using shield/0.2.1 kit...
+   
+   Checking kit pre-requisites...
+   
+   What authentication backend do you wish to use with SHIELD?
+   
+      1) UAA OAuth Integration
+      2) HTTP Basic Auth
+   
+    choice? [1-2]: 
 
-::
-
-    $ cat > networking.yml <<EOF
-    ---
-    networks:
-      - name: shield
-        subnets:
-          - range:    10.4.1.0/24
-            gateway:  10.4.1.1
-            dns:     [10.4.0.2]
-            cloud_properties:
-              subnet: subnet-xxxxxxxx  # <--- your global-infra-0 AWS Subnet ID
-              security_groups: [wide-open]
-            reserved:
-              - 10.4.1.2 - 10.4.1.3    # Amazon reserves these
-              - 10.4.1.4 - 10.4.1.31   # Allocated to other deployments
-                # SHIELD is in 10.4.1.32/28
-              - 10.4.1.48 - 10.4.1.254 # Allocated to other deployments
-            static:
-              - 10.4.1.32 - 10.4.1.34
-    EOF
-
-(Don't forget to change your ``subnet`` to match your AWS VPC
-configuration.)
-
-Then we need to configure our ``store`` and a default ``schedule`` and
-``retention`` policy:
+Type 2 since we are going to use Basic Auth. Next you will see:
 
 ::
 
-    $ cat > properties.yml <<EOF
-    ---
-    ...
+  Known Vault targets - current target indicated with a (*):
+  (*) init	http://127.0.0.1:8200
 
-    properties:
-      shield:
-        skip_ssl_verify: true
-        store:
-          name: "default"
-          plugin: "s3"
-          config:
-            access_key_id: (( vault "secret/us-west-2:access_key" ))
-            secret_access_key: (( vault "secret/us-west-2:secret_key" ))
-            bucket: xxxxxx # <- backup's s3 bucket
-            prefix: "/"
-        schedule:
-          name: "default"
-          when: "daily 3am"
-        retention:
-          name: "default"
-          expires: "86400" # 24 hours
-    EOF
+  Which Vault would you like to target?
+  >
 
-Finally, if you recall, we already generated an SSH keypair for SHIELD,
-so that we could pre-deploy the public key to our **proto-BOSH**. We
-stuck it in the Vault, at ``secret/us-west-2/proto/shield/keys/core``,
-so let's get it back out for this deployment:
+Genesis automatically detects all the Vault targets you have targeted using
+`safe <https://github.com/starkandwayne/safe>`__ command.
 
 ::
 
-    $ cat > credentials.yml <<EOF
-    ---
-    properties:
-      shield:
-        daemon:
-          ssh_private_key: (( vault meta.vault_prefix "/keys/core:private"))
-    EOF
-
-Now, our ``make manifest`` should succeed (and not complain)
+ Now targeting init at http://127.0.0.1:8200
 
 ::
 
-    $ make manifest
+  Required parameter: shield_static_ip
+
+  Choose a static IP from the network in your Cloud Config.
+  External SHIELD agents will call home to this IP.
+
+  Choose a static IP for the daemon API?
+  >
+
+ Use IP 10.4.1.32 and add link to the network plan
 
 Time to deploy!
 
 ::
 
-    $ make deploy
-    Acting as user 'admin' on 'us-west-2-proto-bosh'
-    Checking whether release shield/6.3.0 already exists...NO
-    Using remote release `https://bosh.io/d/github.com/starkandwayne/shield-boshrelease?v=6.3.0'
+    $ genesis deploy uswest-2-proto.yml
+
+::
+
+    Using environment 'us-west-2-proto-bosh' as client 'admin'
+
+    Using deployment 'uswest-2-proto'
+
+    Checking whether release shield/7.0.2 already exists...NO
+    Using remote release `https://bosh.io/d/github.com/starkandwayne/shield-boshrelease?v=7.0.2'
 
     Director task 13
       Started downloading remote release > Downloading remote release
+
+    instance_groups:
+    - name: shield
+    jobs:
+    - name: postgres
+      properties:
+        roles:
+    - name: "<redacted>"
+    -         password: "<redacted>"
+    +         password: "<redacted>"
+    - name: shield-daemon
+      properties:
+        auth:
+          api_keys:
+    -           autoprovision: "<redacted>"
+    +           autoprovision: "<redacted>"
+    -         password: "<redacted>"
+    +         password: "<redacted>"
+        database:
+    -         password: "<redacted>"
+    +         password: "<redacted>"
+    -       ssh_private_key: "<redacted>"
+    +       ssh_private_key: "<redacted>"
+        ssl:
+    -         crt: "<redacted>"
+    +         crt: "<redacted>"
+    -         key: "<redacted>"
+    +         key: "<redacted>"
+
+    Continue? [yN]:
 
 Once that's complete, you will be able to access your SHIELD deployment,
 and start configuring your backup jobs.
@@ -1184,7 +1163,139 @@ and start configuring your backup jobs.
 How to use SHIELD
 ~~~~~~~~~~~~~~~~~~~~~~
 
-TODO: Add how to use SHIELD to backup and restore by using an example.
+Backup jobs for SHIELD are created and maintained in the SHIELD UI:
+
+.. image:: /images/shield_ui.png
+   :alt: SHIELD UI
+
+To access the SHIELD UI, go to https://10.4.1.32. The user name is
+``shield`` and the password can be accessed in Vault by running
+``safe get secret/uswest/2/proto/shield/webui:password``. We recommend also
+storing this password in a password manager for convenience.
+
+In the SHIELD deployment, we defined a default schedule and retention
+policy as well as provided access to the blobstore. We can add
+additional policies in the SHIELD UI.
+
+To create a backup schedule, click on the **Schedules** tab and then
+**Create New Schedule**. Since schedule times are given in UT, it is
+helpful to include your local time in the schedule name and/or summary
+field. For example, if you were in Brisbane, Australia you might name
+your backup job "Daily at 2 AM" and then provide the schedule as "daily
+4 pm" or "daily 16:00". You can even use "daily at 16:05" if desired.
+
+There are actually quite a few keywords available allowing you to create
+backups that are ``hourly``, ``daily``, ``weekly``, or ``monthly`` using
+those keywords. Here are some additional backup schedules to show their
+behaviors: "hourly at 45 after", "thursdays at 23:35", "3rd Tuesday at
+2:05", and "monthly at 2:05 on 14th". Once you have provided the name,
+schedule, and optional summary click **Create** to finish.
+
+Now that you have some additional backup schedules, we're going to
+create more **retention policies** as well. Click on **Retention** and
+**Create New Retention Policy**. Similar to the schedules, it is helpful
+to include the duration in the policy name. The duration is given in
+days, so if you wanted to keep a given backup for a year you'd use
+``365`` and perhaps name the policy "1 year retention".
+
+Something to consider: people usually like comparing "this time, last
+period" backups. By that we mean "I wonder what X looked like this time
+last year" or "I wonder what last Monday looked like", so you might want
+to consider making your 1 year backups actually 13 months or your weekly
+backups 8 days. (And so on.)
+
+For the **storage** you *can* create additional storage configurations
+in the SHIELD UI by clicking on **Storage** and **Create New Store**.
+Currently SHIELD has an s3 plugin for storage, so your blobstore must be
+either S3 or S3-compatible. This said, due to credential management, we
+strongly encourage you to put the storage configurations in the SHIELD
+deployment itself and allow Vault to manage the credentials of the new
+blobstores. To create a new store in the UI you will need to supply the
+configuration as a JSON object, e.g.:
+
+::
+
+    {
+      "access_key_id": "ACCESS_KEY",
+      "bucket": "192-168-10-154-sslip-io-shield",
+      "prefix": "/DESIRED_PREFIX",
+      "s3_host": "s3.192.168.10.154.sslip.io",
+      "s3_port": "8080",
+      "secret_access_key": "SECRET_ACCESS_KEY",
+      "signature_version": "2",
+      "skip_ssl_validation": true
+    }
+
+Now that we have the where, when, and how long we need the "what". In
+SHIELD parlance this is the **target**. In a minimal configuration,
+you'll want to back up the BOSH(es) and Cloud Foundry(-ies). To add
+these as targets, go to **Targets** and **Create New Target**.
+
+In the configuration we are using here, BOSH and Cloud Foundry are both
+using postgres so the plugin name in this case will be "postgres". For
+BOSH the only database that needs to be backed up is the bosh database,
+but for Cloud Foundry we'll need to back up all of its databases.
+
+To backup BOSH, use the postgres plugin and the BOSH director's IP and
+port ``5444`` for the **Remote IP:Port**. The JSON configuration for a
+sample BOSH backup is:
+
+::
+
+    {
+      "pg_user": "vcap",
+      "pg_password": "",
+      "pg_host": "127.0.0.1",
+      "pg_port": "5432",
+      "pg_bindir": "/var/vcap/packages/postgres-9.4/bin",
+      "pg_dump_args": "",
+      "pg_database": "bosh"
+    }
+
+To backup Cloud Foundry, again use the postgres plugin, the IP address
+of the ``postgres_z1`` VM, and port ``5444``. The JSON configuration for
+a sample Cloud Foundry backup is:
+
+::
+
+    {
+      "pg_user": "vcap",
+      "pg_password": "",
+      "pg_host": "127.0.0.1",
+      "pg_port": "5432",
+      "pg_bindir": "/var/vcap/packages/postgres-9.4.9/bin",
+      "pg_dump_args": ""
+    }
+
+Notice that the only difference between these configurations is the
+``pg_database`` field, used in the BOSH case to back up only the BOSH
+database itself.
+
+SHIELD currently has plugins for Redis, Mongo, Elasticsearch, and
+others. To see more information about the plugin list and relevant
+documentation, please check out the `SHIELD
+README <https://github.com/starkandwayne/shield>`__.
+
+In order to back up BOSH, Cloud Foundry, and your services you will need
+to use the schedules, retention policies, targets, and storage
+definitions and create a **backup job**. To create the job, go to
+**Jobs** and **Create A New Job**. This is actually the easiest part to
+configure - aside from providing the name and optional summary,
+everything else is a drop down menu. This is where good naming really
+comes in handy! Once you have selected your target, storage, schedule,
+and retention policy click **Create** to create the job.
+
+In addition to running at the scheduled time, you can run a job at any
+time by clicking the circular arrow icon for the desired job. Jobs can
+also be paused by clicking the adjacent pause icon. This means that the
+job will not run at its scheduled time(s) until it is unpaused.
+
+In order to **restore** a given backup, go to **Restore**. You can
+filter your backup jobs by date and/or target name. The **Dashboard**
+gives a list of the most recent tasks and their durations. Initially,
+most tasks are expected to have a very short duration but as time goes
+on and your environment grows you will notice the time required for the
+various backups will increase.
 
 Concourse
 ----------
