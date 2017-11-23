@@ -7,7 +7,7 @@ aws_key_file   = "/path/to/ssh/file.pem"
 
 ## Options
 # aws_region   = "us-west-2"
-# network      = "10.42"
+# network      = "10.4"
 
 ## Availability Zones
 # aws_az1      = "a"

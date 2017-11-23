@@ -2,78 +2,36 @@
 Amazon Web Services Guide
 =========================
 
-Pre-requisites
---------------
+Welcome to the Stark & Wayne guide to deploy, automate and manage Cloud Foundry
+on Amazon Web Services (AWS). This guide will answer the following questions:
 
-1. Create an Amazon Web Services account.
-2. We'll need credentials, such as ``aws_secret_key`` and ``aws_secret_key``.
-3. A local computer running terraform_.
-
-.. _terraform: https://www.terraform.io/downloads.html
-
-Terraform
----------
-
-Config and Run
-~~~~~~~~~~~~~~
-
-1. Clone the codex repository. ``git clone https://github.com/starkandwayne/codex-v2.git``
-2. From the root of the **codex** folder, cd to ``terraform/aws``.
-3. Make a copy of the example file.
-
-::
-
-	cp aws.tfvars.example aws.tfvars
-
-
-4. Open ``aws.tfvars`` in an editor and fill in the required variables at the top.
-
-5. From your terminal, run ``make all``.
-
-Output
-~~~~~~
-
-Once the Terraform plan has run, it will yield a private network with a public-ip
-address to the bastion host we will use to setup the rest of our systems.
-
-In the last few lines of output look for this:
-
-::
-
-	box.bastion.public = 35.53.126.226
-
-Jumpbox
--------
-
-We use a tool called Jumpbox_ to help setup the bastion host.
-
-.. _jumpbox: https://github.com/starkandwayne/jumpbox
-
-The user for the bastion is ``ubuntu``, so with the key-pair we used with Terraform
-and the IP address from the end of the Terraform output, we can build the ssh
-connection string.
-
-Let's connect to the bastion.
-
-::
-
-	ssh -i /path/to/key-pair.pem ubuntu@35.166.126.226
+(1) How can we automate CF on AWS infrastructure in an efficient and effective way?
+(2) How can we manage CF from development, to staging and on through production?
+(3) How can we handle secrets/certs in a safe way for all the deployments?
+(4) How do we backup CF with all of its apps and services such that in the case of disaster we can fully rebuild and restore the system?
+(5) How can we monitor CF system’s metrics and catch potential failures, preferably before they happen?
 
 
 Overview
---------
+=========
 
-Welcome to the Stark & Wayne guide to deploying Cloud Foundry on Amazon
-Web Services. This guide provides the steps to create authentication
-credentials, generate the underlying cloud infrastructure, then use
-Terraform to prepare a bastion host.
+We use a colorful diagram to show the architecture of the CF ecosystem as below.
 
-From this bastion, we setup a special BOSH Director we call the
-**proto-BOSH** server where software like Vault, Concourse, Bolo and
+.. image:: /images/levels_of_bosh.png
+   :alt: Levels of Bosh
+
+In the above diagram, BOSH (1) is the **proto-BOSH** (we will explain why we need it soon)
+, while BOSH (2) and BOSH (3) are the per-site BOSH Directors.
+
+Before we deploy anything in the above diagram, this guide will walk you though 
+how to prepare the underlying cloud infrastructure and a bastion host using Terraform.
+
+From the bastion, we setup a special BOSH Director we call the
+**proto-BOSH** server where software like Vault, Concourse, Prometheus and
 SHIELD are setup in order to give each of the environments created after
 the **proto-BOSH** key benefits of:
 
--  Secure Credential Storage
+-  Secure Credential Storage and Rotation
 -  Pipeline Management
 -  Monitoring Framework
 -  Backup and Restore Datastores
@@ -90,64 +48,64 @@ And visibility into the progress and health of each application,
 release, or package is available through the power of Concourse
 pipelines.
 
-.. image:: /images/levels_of_bosh.png
-   :alt: Levels of Bosh
+Pre-requisites
+===============
 
-In the above diagram, BOSH (1) is the **proto-BOSH**, while BOSH (2) and
-BOSH (3) are the per-site BOSH Directors.
+1. Create an Amazon Web Services account.
+2. Install terraform_ on your laptop/computer.
+3. Install genesis_ on your laptop/computer.
 
-Now it's time to setup the credentials.
+.. _terraform: https://www.terraform.io/downloads.html
 
-Setup Credentials
------------------
+.. _genesis: https://github.com/starkandwayne/genesis
 
-So you've got an AWS account right? Cause otherwise let me interest you
-in another guide like our OpenStack, Azure or vSphere, etc. j/k
+Get AWS Ready
+==============
 
 To begin, let's login to `Amazon Web
 Services <https://signin.aws.amazon.com/console>`__ and prepare the
-necessary credentials and resources needed.
+necessary user credentials and resources needed.
 
-1. Access Key ID
-2. Secret Key ID
-3. A Name for your VPC
-4. An EC2 Key Pair
+1. Create IAM User with Programmatic Access Type
+2. Save Access Key ID and Secret Key ID
+3. Name Your VPC
+4. Generate EC2 Key Pair
 
-Generate Access Key
-~~~~~~~~~~~~~~~~~~~
+Create IAM User with Programmatic Access
+-----------------------------------------
 
-The first thing you're going to need is a combination **Access Key ID**
-/ **Secret Key ID**. These are generated (for IAM users) via the IAM
-dashboard.
+To help keep things isolated, the first thing you're going to need is creating a band new IAM user with **Programmatic Access** type. A combination **Access Key ID** / **Secret Key ID** will be generated for the IAM user via the IAM dashboard.
 
-To help keep things isolated, we're going to set up a brand new IAM
-user. It's a good idea to name this user something like ``cf`` so that
-no one tries to re-purpose it later, and so that it doesn't get deleted.
+It's a good idea to name this user something like ``cf`` so that no one tries to re-purpose it later, and so that it doesn't get deleted.
 
 1. On the AWS web console, access the IAM service, and click on
-   ``Users`` in the sidebar. Then create a new user and select "Generate
-   an access key for each user".
+   ``Users`` in the sidebar. Click ``Add User`` button on the left top, then type ``cf`` for user name, choose ``Programmatic access`` as AWS access type which enables an access key ID and secret access key for the AWS API, CLI, SDK, and other development tools.
 
-**NOTE**: **Make sure you save the secret key somewhere secure**, like
-1Password or a Vault instance. Amazon will be unable to give you the
-**Secret Key ID** if you misplace it -- your only recourse at that point
-is to generate a new set of keys and start over.
+2. Click ``Next: Permissions``, you will see three different ways to set permissions.
+   No matter which way you select, make sure you assign **PowerUserAccess** policy
+   to your user. Let's pick ``Attach existing policies directly``, search 
+   ``PowerUserAccess`` in policy type and  check the box on the left to select 
+   the ``PowerUserAccess`` policy.This user will be able to do any operation 
+   except IAM operations.
 
-2. Next, find the ``cf`` user and click on the username. This should
-   bring up a summary of the user with things like the *User ARN*,
-   *Groups*, etc. In the bottom half of the Summary panel, you can see
-   some tabs, and one of those tabs is *Permissions*. Click on that one.
+3. Click ``Next: Review`` and you will see a summary about the user, click the 
+   ``Create user`` button at the right bottom and you will see user Access Key ID 
+   and Secret Access Key. You can also download credentials as a file
+   by click the download button on the right top corner.
 
-3. Now assign the **PowerUserAccess** role to your user. This user will
-   be able to do any operation except IAM operations. You can do this by
-   clicking on the *Permissions* tab and then clicking on the *attach
-   policy* button.
+   **NOTE**: **Make sure you save the secret key somewhere secure**, like
+   1Password or a Vault instance. Amazon will be unable to give you the
+   **Secret Key ID** if you misplace it -- your only recourse at that point
+   is to generate a new set of keys and start over.
 
 4. We will also need to create a custom user policy in order to create
-   ELBs with SSL listeners. At the same *Permissions* tab, expand the
-   *Inline Policies* and then create one using the *Custom Policy*
-   editor. Name it ``ServerCertificates`` and paste the following
-   content:
+   ELBs with SSL listeners. After you click on ``Users`` under IAM Services,
+   click the user you just created,in the top half of the user summary panel,
+   you can see some tabs, and one of those tabs is ``Permissions``. Click on 
+   that one and then click ``Add inline policy`` at the right bottom,
+   then create a policy using the ``Custom Policy`` editor. Name it
+   ``ServerCertificates`` and paste the following content into the
+   Policy Document section:
 
    ::
 
@@ -167,10 +125,11 @@ is to generate a new set of keys and start over.
            ]
        }
 
-5. Click on *Apply Policy* and you will be all set.
+5. You can validate the policy by clicking on ``Validate Policy``. 
+   Click on ``Apply Policy`` and you will be all set.
 
 Name Your VPC
-~~~~~~~~~~~~~
+--------------
 
 This step is really simple -- just make one up. The VPC name will be
 used to prefix certain things that Terraform creates in the AWS Virtual
@@ -198,7 +157,7 @@ components like Subnets, Network ACLs and Security Groups:
 +-------------------+-------------------+
 
 Generate EC2 Key Pair
-~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 The **Access Key ID** / **Secret Key ID** are used to get access to the
 Amazon Web Services themselves. In order to properly deploy on EC2 over
@@ -213,13 +172,13 @@ just plain won't work. The region name setting can be found in
 `Amazon Region
 Doc <http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAvailabilityZones.html>`__.
 
-1. Starting from the main Amazon Web Console, go to Service > EC2, and
-   then click the *Key Pairs* link under *Network & Security*. Look for
+1. Starting from the main Amazon Web Console, go to ``Service > EC2``, and
+   then click the ``Key Pairs`` link under ``Network & Security``. Look for
    the big blue ``Create Key Pair`` button.
 
 2. This downloads a file matching the name of your **EC2 Key Pair**.
-   Example, a key pair named cf-deploy would produce a file named
-   ``cf-deploy.pem`` and be saved to your Downloads folder. Also
+   Example, a key pair named bastion would produce a file named
+   ``bastion.pem`` and be saved to your Downloads folder. Also
    ``chmod 0600`` the ``*.pem`` file.
 
 3. Decide where you want this file to be. All ``*.pem`` files are
@@ -230,43 +189,57 @@ Doc <http://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.RegionsAndAv
 
 ::
 
-    aws_key_file = /Users/<username>/.ssh/cf-deploy.pem
+    aws_key_file = /Users/<username>/.ssh/bastion.pem
 
-Use Terraform
--------------
+Create VPC, NAT Server and Bastion Using Terraform
+===================================================
 
 Once the requirements for AWS are met, we can put it all together and
 build out your shiny new Virtual Private Cloud (VPC), NAT server and
-bastion host. Change to the ``terraform/aws`` sub-directory of this
-repository before we begin.
+bastion host.
 
-The configuration directly matches the `Network
-Plan <https://github.com/starkandwayne/codex/blob/master/network.md>`__
-for the demo environment. When deploying in other environments like
-production, some tweaks or rewrites may need to be made.
+The configuration should matches the `Network
+Plan <http://starkandwayne.com/codex/overview/network.html#network-subdivision>`__.
 
-Variable File
-~~~~~~~~~~~~~
+Config and Run
+---------------
 
-Create a ``aws.tfvars`` file with the following configurations
-(substituting your actual values) all the other configurations have
-default setting in the ``CODEX_ROOT/terraform/aws/aws.tf`` file.
+1. Clone the codex repository.
+
+::
+
+   git clone https://github.com/starkandwayne/codex.git
+
+2. From the root of the **codex** folder
+
+::
+
+   cd terraform/aws
+
+3. Make a copy of the example tfvars file.
+
+::
+
+	cp aws.tfvars.example aws.tfvars
+
+
+4. Open ``aws.tfvars`` in an editor and fill in the required variables at the top.
 
 ::
 
     aws_access_key = "..."
     aws_secret_key = "..."
     aws_vpc_name   = "snw"
-    aws_key_name   = "cf-deploy"
-    aws_key_file   = "/Users/<username/.ssh/cf-deploy.pem"
+    aws_key_name   = "bastion"
+    aws_key_file   = "/Users/<username/.ssh/bastion.pem"
 
 If you need to change the region or subnet, you can override the
-defaults by adding:
+defaults by uncommenting and configuring the following setction:
 
 ::
 
-    aws_region     = "us-east-1"
-    network        = "10.42"
+    aws_region     = "us-west-2"
+    network        = "10.4"
 
 Also, be advised: Depending on the state of your AWS account, you may
 also need to explicitly list the AWS Availability Zones as follows:
@@ -289,20 +262,11 @@ working on. For example, you can change ``instance_type`` (default is
 t2.small) in ``aws.tf`` to large size if the bastion would require a
 high workload.
 
-Production Considerations
-~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When considering production availability. We recommend `a region with
-three availability
-zones <http://aws.amazon.com/about-aws/global-infrastructure/>`__ for
-best HA results. Vault requires at least three zones. Please feel free
-to list any other software that requires more than two zones for HA.
-
-Build Resources
-~~~~~~~~~~~~~~~
+5. From your terminal, run ``make manifest`` and ``make all``.
 
 As a quick pre-flight check, run ``make manifest`` to compile your
-Terraform plan and suss out any issues with naming, missing variables,
+Terraform plan and check if there are any issues with naming, missing variables,
 configuration, etc.:
 
 ::
@@ -333,11 +297,27 @@ should be left with a bunch of subnets, configured network ACLs,
 security groups, routing tables, a NAT instance (for public internet
 connectivity) and a bastion host.
 
-If you run into issues before this point refer to our
-`troubleshooting <troubleshooting.md>`__ doc for help.
+Once the Terraform plan has run, it will yield a private network with a public-ip
+address to the bastion host we will use to setup the rest of our systems.
+
+In the last few lines of output look for this:
+
+::
+
+	box.bastion.public = 35.53.126.226
+
+Production Considerations
+--------------------------
+
+When considering production availability. We recommend `a region with
+three availability
+zones <http://aws.amazon.com/about-aws/global-infrastructure/>`__ for
+best HA results. Vault requires at least three zones. Please feel free
+to list any other software that requires more than two zones for HA.
+
 
 Automate Build and Teardown
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------
 
 When working with development environments only, there are options built
 into Terraform that will allow you to configure additional variables and
@@ -364,10 +344,11 @@ The first starts the background process that will be checking if it's
 time to begin the teardown. The second will shutdown the background
 process.
 
-Bastion Host
-------------
+Setup Bastion Host
+===================
 
-The bastion host is the server the BOSH operator connects to, in order
+The bastion host which is created using Terraform script in previous section 
+is the server the BOSH operator connects to, in order
 to perform commands that affect the **proto-BOSH** Director and the
 software that gets deployed by it.
 
@@ -379,27 +360,31 @@ numbered order:
 .. image:: /images/bastion_host_overview.png
    :alt: Bastion Host Overview
 
-Public IP Address
-~~~~~~~~~~~~~~~~~
+Connect to Bastion
+-------------------
 
-Before we can begin to install software, we need to connect to the
-server. There are a couple of ways to get the IP address.
+Before we can begin to install software, we need to connect to the bastion
+. There are a couple of ways to get the IP address.
 
 -  At the end of the Terraform ``make deploy`` output the bastion
    address is displayed.
 
 ::
 
-    box.bastion.public    = 52.43.51.197
-    box.nat.public        = 52.41.225.204
+    box.bastion.public = 34.211.111.162
+    box.nat.public = 34.212.168.184
 
 -  In the AWS Console, go to Services > EC2. In the dashboard each of
-   the **Resources** are listed. Find the *Running Instances* click on
-   it and locate the bastion. The *Public IP* is an attribute in the
-   *Description* tab.
+   the **Resources** are listed. Find the **Running Instances** click on
+   it and locate the bastion. The **Public IP** is an attribute in the
+   Description tab.
 
-Connect to Bastion
-~~~~~~~~~~~~~~~~~~
+
+Let's connect to the bastion.
+
+::
+
+	ssh -i /path/to/bastion.pem ubuntu@34.211.111.162
 
 You'll use the **EC2 Key Pair** ``*.pem`` file that was stored from the
 `Generate EC2 Key Pair <aws.md#generate-ec2-key-pair>`__ step before as
@@ -407,38 +392,29 @@ your credential to connect.
 
 In forming the SSH connection command, use the ``-i`` flag to give SSH
 the path to the ``IdentityFile``. The default user on the bastion server
-is ``ubuntu``. This will change in a little bit though when we create a
-new user, so don't get too comfy.
+is ``ubuntu``. We will create new users so each user can use their own account to 
+connect to the bastion host.
 
-::
-
-    $ ssh -i ~/.ssh/cf-deploy.pem ubuntu@52.43.51.197
-
-Problems connecting? `Verify your SSH
-fingerprint <https://github.com/starkandwayne/codex/blob/master/troubleshooting.md#verify-keypair>`__
-in the troubleshooting doc.
+TO DO: convert troubleshooting.md and link it here.
 
 Add User
-~~~~~~~~
+---------
+
+We use a tool called Jumpbox_ to help setup the bastion host.
+
+.. _jumpbox: https://github.com/starkandwayne/jumpbox
 
 Once on the bastion host, you'll want to use the ``jumpbox`` script,
 which has been installed automatically by the Terraform configuration.
 `This script installs <https://github.com/starkandwayne/jumpbox>`__ some
 useful utilities like ``jq``, ``spruce``, ``safe``, and ``genesis`` all
 of which will be important when we start using the bastion host to do
-deployments.
-
-**NOTE**: Try not to confuse the ``jumpbox`` script with the jumpbox
-*BOSH release*. The *BOSH release* can be used as part of a deployment.
-And the script gets run directly on the bastion host.
-
-Once connected to the bastion, check if the ``jumpbox`` utility is
-installed.
+deployments. Check if the ``jumpbox`` utility is installed by running:
 
 ::
 
     $ jumpbox -v
-    jumpbox v49
+    jumpbox v50
 
 In order to have the dependencies for the ``bosh_cli`` we need to create
 a user. Also a convenience method at the end will prompt for git
@@ -459,22 +435,12 @@ Let's add a user with ``jumpbox useradd``:
     Username:  juser
     Enter the public key for this user's .ssh/authorized_keys file:
     You should run `jumpbox user` now, as juser:
-      su - juser
+      sudo -iu juser
       jumpbox user
 
-Setup User
-~~~~~~~~~~
 
-After you've added the user, **be sure you follow up and setup the
-user** before going any further.
-
-Use the ``su - juser`` command to switch to the user. And run
+Use the ``sudo -iu juser`` command to switch to the user. And run
 ``jumpbox user`` to install all dependent packages.
-
-::
-
-    $ su - juser
-    $ jumpbox user
 
 The following warning may show up when you run ``jumpbox user``:
 
@@ -495,8 +461,12 @@ already installed everything when you run ``jumpbox user``.
     rvm not installed
     bosh not installed
 
-SSH Config
-~~~~~~~~~~
+**NOTE**: Try not to confuse the ``jumpbox`` script with the jumpbox
+*BOSH release*. The *BOSH release* can be used as part of a deployment.
+And the script gets run directly on the bastion host.
+
+SSH Config for New User
+-----------------------
 
 On your local computer, setup an entry in the ``~/.ssh/config`` file for
 your bastion host. Substituting the correct IP.
@@ -504,15 +474,15 @@ your bastion host. Substituting the correct IP.
 ::
 
     Host bastion
-      Hostname 52.43.51.197
+      Hostname 34.211.111.162
       User juser
 
-Test Login
-~~~~~~~~~~
+Test Login for New User
+-----------------------
 
-After you've logged in as ``ubuntu`` once, created your user, logged out
-and configured your SSH config, you'll be ready to try to connect via
-the ``Host`` alias.
+After you created your user and configured your SSH config, next 
+log out ``ubuntu`` user, you'll be ready to try to connect
+via the ``Host`` alias.
 
 ::
 
@@ -542,46 +512,28 @@ everything's ready to continue.
     git user.name  is 'Joe User'
     git user.email is 'juser@starkandwayne.com'
 
+    To bootstrap this installation,  try `jumpbox system`
+    To set up your personal environment: `jumpbox user`
+    To update this copy of jumpbox, use: `jumpbox sync`
+    To create a new local user account:  `jumpbox useradd`
+
 Proto Environment
------------------
+==================
 
 .. image:: /images/global_network_diagram.png
    :alt: Global Network Diagram
 
-There are three layers to ``genesis`` templates.
-
--  Global
--  Site
--  Environment
-
-Site Name
-~~~~~~~~~
-
-Sometimes the site level name can be a bit tricky because each IaaS
-divides things differently. With AWS we suggest a default of the AWS
-Region you're using, for example: ``us-west-2``.
-
-Environment Name
-~~~~~~~~~~~~~~~~
-
-All of the software the **proto-BOSH** will deploy will be in the
-``proto`` environment. And by this point, you've `Setup
-Credentials <aws.md#setup-credentials>`__, `Used
-Terraform <aws.md#use-terraform>`__ to construct the IaaS components and
-`Configured a Bastion Host <aws.md#bastion-host>`__. We're ready now to
-setup a BOSH Director on the bastion.
-
-The first step is to create a **vault-init** process.
 
 vault-init
-~~~~~~~~~~
+-----------
 
 .. image:: /images/bastion_step_1.png
    :alt: vault-init
 
-BOSH has secrets. Lots of them. Components like NATS and the database
-rely on secure passwords for inter-component interaction. Ideally, we'd
-have a spinning Vault for storing our credentials, so that we don't have
+BOSH and its deployments have secrets. Lots of them. Components 
+like NATS and the database rely on secure passwords for 
+inter-component interaction. Ideally, we'd have a spinning Vault
+for storing our credentials, so that we don't have
 them on-disk or in a git repository somewhere.
 
 However, we are starting from almost nothing, so we don't have the
@@ -598,9 +550,9 @@ only the client for interacting with Vault (``safe``), but also the
 Vault server daemon itself.
 
 Start Server
-^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
-Were going to start the server and do an overview of what the output
+We are going to start the server and do an overview of what the output
 means. To start the **vault-init**, run the ``vault server`` with the
 ``-dev`` flag.
 
@@ -636,7 +588,7 @@ separate ssh tab. Also, we do need to capture the output of the
 ``Root Token``.
 
 Setup vault-init
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~
 
 In order to setup the **vault-init** we need to target the server and
 authenticate. We use ``safe`` as our CLI to do both commands.
@@ -661,7 +613,7 @@ Authenticate with the ``Root Token`` from the ``vault server`` output.
     Token: <paste your Root Token here>
 
 Test vault-init
-^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 Here's a smoke test to see if you've setup the **vault-init** correctly.
 
@@ -681,115 +633,143 @@ Try ``safe auth token`` again.
 All set! Now we can now build our deploy for the **proto-BOSH**.
 
 proto-BOSH
-~~~~~~~~~~
+------------
 
 .. image:: /images/bastion_step_2.png
    :alt: proto-BOSH
 
 Generate BOSH Deploy
-^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~
 
-When using `the Genesis
-framework <https://github.com/starkandwayne/genesis>`__ to manage our
-deploys across environments, a folder to manage each of the software
-we'll deploy needs to be created.
-
-First setup a ``ops`` folder in your user's home directory.
-
-::
-
-    $ mkdir -p ~/ops
-    $ cd ~/ops
-
-Genesis has a template for BOSH deployments (including support for the
-**proto-BOSH**), so let's use that by passing ``bosh`` into the
-``--template`` flag.
+We use `Genesis <https://github.com/starkandwayne/genesis>`__ to deploy BOSH and 
+other BOSH deployments. `Genesis <https://github.com/starkandwayne/genesis>`__ 
+is a tool we made to make deploying process much simpler for different IaaS and 
+multiple environments such as sandbox, staing and prod.
+ 
+First setup a ``deployments`` folder in your user's home directory. All the 
+deployments repo for different software will be placed in this directory. 
 
 ::
 
-    $ genesis new deployment --template bosh
-    $ cd ~/ops/bosh-deployments
+    $ mkdir -p ~/deployments
+    $ cd ~/deployments
 
-Next, we'll create a site and an environment from which to deploy our
-**proto-BOSH**. The BOSH template comes with some site templates to help
-you get started quickly, including:
-
--  ``aws`` for Amazon Web Services VPC deployments
--  ``vsphere`` for VMWare ESXi virtualization clusters
--  ``openstack`` for OpenStack tenant deployments
-
-When generating a new site we'll use this command format:
+Next, run the following command to initialize a BOSH Genesis repo. It will pull the
+last version of `bosh-genesis-kit <https://github.com/genesis-community/bosh-genesis-kit>`__.
+The name of deployment repo is default as kit name followed by `-deployments`, 
+in this case it is `bosh-deployments`. If you want to give it a different name
+you can use `name` parameter to specify it.
 
 ::
 
-    genesis new site --template <name> <site_name>
+    $ genesis init -k bosh
+    $ cd ~/deployments/bosh-deployments
 
-The template ``<name>`` will be ``aws`` because that's our IaaS we're
-working with and we recommend the ``<site_name>`` default to the AWS
-Region, ex. ``us-west-2``.
-
-::
-
-    $ genesis new site --template aws us-west-2
-    Created site us-west-2 (from template aws):
-    ~/ops/bosh-deployments/aws
-    ├── README
-    └── site
-        ├── README
-        ├── disk-pools.yml
-        ├── jobs.yml
-        ├── networks.yml
-        ├── properties.yml
-        ├── releases
-        ├── resource-pools.yml
-        ├── stemcell
-        │   ├── name
-        │   ├── sha1
-        │   ├── url
-        │   └── version
-        └── update.yml
-
-    2 directories, 13 files
-
-Finally, let's create our new environment, and name it ``proto`` (that's
-``us-west-2/proto``, formally speaking).
+Next, create a new deployment named `uswest2-proto-bosh` by running the following
+Genesis command.
 
 ::
 
-    $ genesis new env --type bosh-init us-west-2 proto
-    Running env setup hook: ~/ops/bosh-deployments/.env_hooks/setup
+    $ genesis new uswest2-proto-bosh
 
-     init  http://127.0.0.1:8200
+Next, you only need to answer all the questions prompted for you, a customized
+configuration file will be automatically generated for you according to your answers.
+Let's walk through all the questions.
 
-    Use this Vault for storing deployment credentials?  [yes or no]
-    yes
-    Setting up credentials in vault, under secret/us-west-2/proto/bosh
-    .
-    └── secret/us-west-2/proto/bosh
-        ├── blobstore/
-        │   ├── agent
-        │   └── director
-        ├── db
-        ├── nats
-        ├── users/
-        │   ├── admin
-        │   └── hm
-        └── vcap
+::
 
+   Generating new environment uswest-2-proto-bosh...
 
-    Created environment us-west-2/:
-    ~/ops/bosh-deployments/us-west-2/proto
-    ├── credentials.yml
-    ├── Makefile
-    ├── name.yml
-    ├── networking.yml
-    ├── properties.yml
-    └── README
+   Using bosh/0.1.4 kit...
+   
+   Checking kit pre-requisites...
+   
+   
+   What IaaS will BOSH be deploying VMs to?
+   
+      1) Amazon Web Services (AWS)
+      2) Microsoft Azure
+      3) Google Cloud Platform (GCP)
+      4) OpenStack
+      5) vSphere
+      6) vCloud
+      7) BOSH-Lite
+   
+    choice? [1-7]: 
 
-    0 directories, 6 files
+Type 1 since we are deploying to AWS Iaas. Next you will see:
 
-**NOTE** Don't forget that ``--type bosh-init`` flag is very important.
-Otherwise, you'll run into problems with your deployment.
+::
+
+  Is this a Proto-BOSH?
+  
+     1) Yes
+     2) No, this bosh will be deployed by another BOSH
+  
+   choice? [1-2]:
+
+Select 1 for Proto-BOSH. Next you will be asked:
+
+::
+  
+  Do you want to install SHIELD on your BOSH for backups?
+  [y/n]:
+
+`Shield <https://github.com/starkandwayne/shield>`__ is a standalone 
+system from S&W that can perform backup and restore 
+functions for a wide variety of pluggable data systems (like Redis, PostgreSQL,
+MySQL, RabbitMQ, etc.). We suggest you backup your BOSH deployment. Type `y` 
+and you will be asked:
+
+::
+
+  Known Vault targets - current target indicated with a (*):
+  (*) init	http://127.0.0.1:8200
+
+  Which Vault would you like to target?
+  >
+
+Genesis automatically detects all the Vault targets you have targeted using
+`safe <https://github.com/starkandwayne/safe>`__ command.
+
+::
+
+ Now targeting init at http://127.0.0.1:8200
+
+::
+
+  Required parameter: static_ip
+  
+  This defines the IP that BOSH will be deployed on.
+  It should be a an IP from the static IP pool on the network
+  you are deploying the VM onto. Usually the BOSH manifest
+  will handle this via `networks`, but the IP is
+  required to create the SSL certificate for BOSH, prior
+  to deploying. If you change this, make sure to
+  have genesis regenerate your SSL certificate.
+  
+  What IP should be used for your BOSH director?
+  >
+
+ Use IP 10.4.1.4 and add link to the network plan
+
+::
+
+  Required parameter: bosh_hostname
+  
+  This is the FQDN for the above  `static_ip`. If you do not have a DNS entry for that IP, or you can simply enter 'bosh'
+  What hostname will be used to access your BOSH director?
+  >
+
+bosh
+
+:: 
+
+  Secret data required -- will be stored in Vault under secret/uswest/2/proto/bosh/bosh/aws:access_key
+  
+  The AWS Access Key is used to authenticate BOSH to Amazon Web Services
+  What is your AWS Access Key?
+  access_key [hidden]:
 
 The template helpfully generated all new credentials for us and stored
 them in our **vault-init**, under the ``secret/us-west-2/proto/bosh``
@@ -797,7 +777,7 @@ subtree. Later, we'll migrate this subtree over to our real Vault, once
 it is up and spinning.
 
 Make Manifest
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
 
 Let's head into the ``proto/`` environment directory and see if we can
 create a manifest, or (a more likely case) we still have to provide some
@@ -1130,8 +1110,11 @@ deployment files to version control, and push them up *somewhere*. It's
 ok, thanks to Vault, Spruce and Genesis, there are no credentials or
 anything sensitive in the template files.
 
-Generate Vault Deploy
-~~~~~~~~~~~~~~~~~~~~~
+Vault
+------
+
+Deploy Vault
+~~~~~~~~~~~~~
 
 We're building the infrastructure environment's vault.
 
@@ -1309,7 +1292,7 @@ And then let's give the deploy a whirl:
 Thanks to Genesis, we don't even have to upload the BOSH releases (or
 stemcells) ourselves!
 
-Initializing Your Global Vault
+Initialize Vault
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now that the Vault software is spinning, you're going to need to
@@ -1411,7 +1394,7 @@ Now, let's switch back to using ``safe``:
     knock: knock
 
 Migrating Credentials
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You should now have two ``safe`` targets, one for first Vault (named
 'init') and another for the real Vault (named 'proto'):
@@ -1490,7 +1473,7 @@ kill the **vault-init** server process!
     $ sudo pkill vault
 
 Shield
-------
+-------
 
 .. image:: /images/bastion_step_4.png
    :alt: Shield
@@ -1500,7 +1483,7 @@ regular backups of data systems that are important to our running
 operation, like the BOSH database, Concourse, and Cloud Foundry.
 
 Setting up AWS S3 For Backup Archives
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To help keep things isolated, we're going to set up a brand new IAM user
 just for backup archive storage. It's a good idea to name this user
@@ -1549,7 +1532,7 @@ paste the following policy and modify accordingly, click
     }
 
 Deploying SHIELD
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 We'll start out with the Genesis template for SHIELD:
 
@@ -1692,277 +1675,18 @@ Once that's complete, you will be able to access your SHIELD deployment,
 and start configuring your backup jobs.
 
 How to use SHIELD
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 TODO: Add how to use SHIELD to backup and restore by using an example.
 
-bolo
-----
-
-.. image:: /images/bastion_step_5.png
-   :alt: Bolo
-
-Bolo is a monitoring system that collects metrics and state data from
-your BOSH deployments, aggregates it, and provides data visualization
-and notification primitives.
-
-Deploying Bolo Monitoring
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You may opt to deploy Bolo once for all of your environments, in which
-case it belongs in your management network, or you may decide to deploy
-per-environment Bolo installations. What you choose mostly only affects
-your network topology / configuration.
-
-To get started, you're going to need to create a Genesis deployments
-repo for your Bolo deployments:
-
-::
-
-    $ cd ~/ops
-    $ genesis new deployment --template bolo
-    $ cd bolo-deployments
-
-Next, we'll create a site for your datacenter or VPC. The bolo template
-deployment offers some site templates to make getting things stood up
-quick and easy, including:
-
--  ``aws`` for Amazon Web Services VPC deployments
--  ``vsphere`` for VMWare ESXi virtualization clusters
--  ``bosh-lite`` for deploying and testing locally
-
-::
-
-    $ genesis new site --template aws us-west-2
-    Created site us-west-2 (from template aws):
-    ~/ops/bolo-deployments/us-west-2
-    ├── README
-    └── site
-        ├── disk-pools.yml
-        ├── jobs.yml
-        ├── networks.yml
-        ├── properties.yml
-        ├── releases
-        ├── resource-pools.yml
-        ├── stemcell
-        │   ├── name
-        │   └── version
-        └── update.yml
-
-    2 directories, 10 files
-
-Now, we can create our environment.
-
-::
-
-    $ cd ~/ops/bolo-deployments/us-west-2
-    $ genesis new env us-west-2 proto
-    Created environment us-west-2/proto:
-    ~/ops/bolo-deployments/us-west-2/proto
-    ├── Makefile
-    ├── README
-    ├── cloudfoundry.yml
-    ├── credentials.yml
-    ├── director.yml
-    ├── monitoring.yml
-    ├── name.yml
-    ├── networking.yml
-    ├── properties.yml
-    └── scaling.yml
-
-    0 directories, 10 files
-
-Bolo deployments have no secrets, so there isn't much in the way of
-environment hooks for setting up credentials.
-
-Now let's make the manifest.
-
-::
-
-    $ cd ~/ops/bolo-deployments/us-west-2/proto
-    $ make manifest
-
-    2 error(s) detected:
-     - $.meta.az: What availability zone is Bolo deployed to?
-     - $.networks.bolo.subnets: Specify your bolo subnet
-
-    Failed to merge templates; bailing...
-    Makefile:22: recipe for target 'manifest' failed
-    make: *** [manifest] Error 5
-
-From the error message, we need to configure the following things for an
-AWS deployment of bolo:
-
--  Availability Zone (via ``meta.az``)
--  Networking configuration
-
-According to the `Network
-Plan <https://github.com/starkandwayne/codex/blob/master/network.md>`__,
-the bolo deployment belongs in the **10.4.1.64/28** network, in zone 1
-(a). Let's configure the availability zone in ``properties.yml``:
-
-::
-
-    $ cat > properties.yml <<EOF
-    ---
-    meta:
-      region: us-west-2
-      az: (( concat meta.region "a" ))
-    EOF
-
-Since ``10.4.1.64/28`` is subdivision of the ``10.4.1.0/24`` subnet, we
-can configure networking as follows.
-
-::
-
-    $ cat > networking.yml <<EOF
-    ---
-    networks:
-     - name: bolo
-       type: manual
-       subnets:
-       - range: 10.4.1.0/24
-         gateway: 10.4.1.1
-         cloud_properties:
-           subnet: subnet-xxxxxxxx #<--- your global-infra-0 AWS Subnet ID
-           security_groups: [wide-open]
-         dns: [10.4.0.2]
-         reserved:
-           - 10.4.1.2   - 10.4.1.3  # Amazon reserves these
-           - 10.4.1.4 - 10.4.1.63  # Allocated to other deployments
-            # Bolo is in 10.4.1.64/28
-           - 10.4.1.80 - 10.4.1.254 # Allocated to other deployments
-         static:
-           - 10.4.1.65 - 10.4.1.68
-    EOF
-
-You can validate your manifest by running ``make manifest`` and ensuring
-that you get no errors (no output is a good sign).
-
-Then, you can deploy to your BOSH Director via ``make deploy``.
-
-Once you've deployed, you can validate the deployment via
-``bosh deployments``. You should see the bolo deployment. You can find
-the IP of bolo vm by running ``bosh vms`` for bolo deployment. In order
-to visit the `Gnossis <https://github.com/bolo/gnossis>`__ web interface
-on your ``bolo/0`` VM from your browser on your laptop, you need to
-setup port forwarding to enable it.
-
-One way of doing it is using ngrok, go to `ngrok
-Downloads <https://ngrok.com/download>`__ page and download the right
-version to your ``bolo/0`` VM, unzip it and run ``./ngrok http 80``, it
-will output something like this:
-
-::
-
-    ngrok by @inconshreveable                                                                                                                                                                   (Ctrl+C to quit)
-
-    Tunnel Status                 online
-    Version                       2.1.3
-    Region                        United States (us)
-    Web Interface                 http://127.0.0.1:4040
-    Forwarding                    http://18ce4bd7.ngrok.io -> localhost:80
-    Forwarding                    https://18ce4bd7.ngrok.io -> localhost:80
-
-    Connections                   ttl     opn     rt1     rt5     p50     p90
-                                  0       0       0.00    0.00    0.00    0.00
-
-Copy the http or https link for forwarding and paste it into your
-browser, you will be able to visit the Gnossis web interface for bolo.
-
-If you do not want to use ngrok, you can simply use your local built-in
-SSH client as follows:
-
-::
-
-    ssh bastion -L 4040:<ip address of your bolo server>:80 -N
-
-Then, go to http://127.0.0.1:4040 in your web browser.
-
-Out of the box, the Bolo installation will begin monitoring itself for
-general host health (the ``linux`` collector), so you should have graphs
-for bolo itself.
-
-Configuring Bolo Agents
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Now that you have a Bolo installation, you're going to want to configure
-your other deployments to use it. To do that, you'll need to add the
-``bolo`` release to the deployment (if it isn't already there), add the
-``dbolo`` template to all the jobs you want monitored, and configure
-``dbolo`` to submit metrics to your ``bolo/0`` VM in the bolo
-deployment.
-
-**NOTE**: This may require configuration of network ACLs, security
-groups, etc. If you experience issues with this step, you might want to
-start looking in those areas first.
-
-We will use shield as an example to show you how to configure Bolo
-Agents.
-
-To add the release:
-
-::
-
-    $ cd ~/ops/shield-deployments
-    $ genesis add release bolo latest
-    $ cd ~/ops/shield-deployments/us-west-2/proto
-    $ genesis use release bolo
-
-If you do a ``make refresh manifest`` at this point, you should see a
-new release being added to the top-level ``releases`` list.
-
-To configure dbolo, you're going to want to add a line like the last one
-here to all of your job template definitions:
-
-::
-
-    jobs:
-      - name: shield
-        templates:
-          - { release: bolo, name: dbolo }
-
-Then, to configure ``dbolo`` to submit to your Bolo installation, add
-the ``dbolo.submission.address`` property either globally or per-job
-(strong recommendation for global, by the way).
-
-If you have specific monitoring requirements, above and beyond the stock
-host-health checks that the ``linux`` collector provides, you can change
-per-job (or global) properties like the dbolo.collectors properties.
-
-You can put those configuration in the ``properties.yml`` as follows:
-
-::
-
-    properties:
-      dbolo:
-        submission:
-          address: x.x.x.x # your Bolo VM IP
-        collectors:
-          - { every: 20s, run: 'linux' }
-          - { every: 20s, run: 'httpd' }
-          - { every: 20s, run: 'process -n nginx -m nginx' }
-
-Remember that you will need to supply the ``linux`` collector
-configuration, since Bolo skips the automatic ``dbolo`` settings you get
-for free when you specify your own configuration.
-
-Further Reading on Bolo
-~~~~~~~~~~~~~~~~~~~~~~~
-
-More information can be found in the `Bolo BOSH Release
-README <https://github.com/cloudfoundry-community/bolo-boshrelease>`__
-which contains a wealth of information about available graphs,
-collectors, and deployment properties.
-
 Concourse
----------
+----------
 
 .. image:: /images/bastion_step_6.png
    :alt: Concourse
 
 Deploying Concourse
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~
 
 If we're not already targeting the ops vault, do so now to save
 frustration later.
@@ -2152,13 +1876,272 @@ replace ``user`` with the ``jumpbox`` username on the bastion host and
 x.x.x.x with the IP address of the bastion host.
 
 Setup Pipelines Using Concourse
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 TODO: Need an example to show how to setup pipeline for deployments
 using Concourse.
 
-Building out Sites and Environments
------------------------------------
+Prometheus
+------------
+
+.. image:: /images/bastion_step_5.png
+   :alt: Bolo
+
+Prometheus is a monitoring system that collects metrics and state data from
+your BOSH deployments, aggregates it, and provides data visualization
+and notification primitives.
+
+Deploying Prometheus Monitoring
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You may opt to deploy Prometheus once for all of your environments, in which
+case it belongs in your management network, or you may decide to deploy
+per-environment Prometheus installations. What you choose mostly only affects
+your network topology / configuration.
+
+To get started, you're going to need to create a Genesis deployments
+repo for your Prometheus deployments:
+
+::
+
+    $ cd ~/ops
+    $ genesis new deployment --template bolo
+    $ cd bolo-deployments
+
+Next, we'll create a site for your datacenter or VPC. The bolo template
+deployment offers some site templates to make getting things stood up
+quick and easy, including:
+
+-  ``aws`` for Amazon Web Services VPC deployments
+-  ``vsphere`` for VMWare ESXi virtualization clusters
+-  ``bosh-lite`` for deploying and testing locally
+
+::
+
+    $ genesis new site --template aws us-west-2
+    Created site us-west-2 (from template aws):
+    ~/ops/bolo-deployments/us-west-2
+    ├── README
+    └── site
+        ├── disk-pools.yml
+        ├── jobs.yml
+        ├── networks.yml
+        ├── properties.yml
+        ├── releases
+        ├── resource-pools.yml
+        ├── stemcell
+        │   ├── name
+        │   └── version
+        └── update.yml
+
+    2 directories, 10 files
+
+Now, we can create our environment.
+
+::
+
+    $ cd ~/ops/bolo-deployments/us-west-2
+    $ genesis new env us-west-2 proto
+    Created environment us-west-2/proto:
+    ~/ops/bolo-deployments/us-west-2/proto
+    ├── Makefile
+    ├── README
+    ├── cloudfoundry.yml
+    ├── credentials.yml
+    ├── director.yml
+    ├── monitoring.yml
+    ├── name.yml
+    ├── networking.yml
+    ├── properties.yml
+    └── scaling.yml
+
+    0 directories, 10 files
+
+Bolo deployments have no secrets, so there isn't much in the way of
+environment hooks for setting up credentials.
+
+Now let's make the manifest.
+
+::
+
+    $ cd ~/ops/bolo-deployments/us-west-2/proto
+    $ make manifest
+
+    2 error(s) detected:
+     - $.meta.az: What availability zone is Bolo deployed to?
+     - $.networks.bolo.subnets: Specify your bolo subnet
+
+    Failed to merge templates; bailing...
+    Makefile:22: recipe for target 'manifest' failed
+    make: *** [manifest] Error 5
+
+From the error message, we need to configure the following things for an
+AWS deployment of bolo:
+
+-  Availability Zone (via ``meta.az``)
+-  Networking configuration
+
+According to the `Network
+Plan <https://github.com/starkandwayne/codex/blob/master/network.md>`__,
+the bolo deployment belongs in the **10.4.1.64/28** network, in zone 1
+(a). Let's configure the availability zone in ``properties.yml``:
+
+::
+
+    $ cat > properties.yml <<EOF
+    ---
+    meta:
+      region: us-west-2
+      az: (( concat meta.region "a" ))
+    EOF
+
+Since ``10.4.1.64/28`` is subdivision of the ``10.4.1.0/24`` subnet, we
+can configure networking as follows.
+
+::
+
+    $ cat > networking.yml <<EOF
+    ---
+    networks:
+     - name: bolo
+       type: manual
+       subnets:
+       - range: 10.4.1.0/24
+         gateway: 10.4.1.1
+         cloud_properties:
+           subnet: subnet-xxxxxxxx #<--- your global-infra-0 AWS Subnet ID
+           security_groups: [wide-open]
+         dns: [10.4.0.2]
+         reserved:
+           - 10.4.1.2   - 10.4.1.3  # Amazon reserves these
+           - 10.4.1.4 - 10.4.1.63  # Allocated to other deployments
+            # Bolo is in 10.4.1.64/28
+           - 10.4.1.80 - 10.4.1.254 # Allocated to other deployments
+         static:
+           - 10.4.1.65 - 10.4.1.68
+    EOF
+
+You can validate your manifest by running ``make manifest`` and ensuring
+that you get no errors (no output is a good sign).
+
+Then, you can deploy to your BOSH Director via ``make deploy``.
+
+Once you've deployed, you can validate the deployment via
+``bosh deployments``. You should see the bolo deployment. You can find
+the IP of bolo vm by running ``bosh vms`` for bolo deployment. In order
+to visit the `Gnossis <https://github.com/bolo/gnossis>`__ web interface
+on your ``bolo/0`` VM from your browser on your laptop, you need to
+setup port forwarding to enable it.
+
+One way of doing it is using ngrok, go to `ngrok
+Downloads <https://ngrok.com/download>`__ page and download the right
+version to your ``bolo/0`` VM, unzip it and run ``./ngrok http 80``, it
+will output something like this:
+
+::
+
+    ngrok by @inconshreveable                                                                                                                                                                   (Ctrl+C to quit)
+
+    Tunnel Status                 online
+    Version                       2.1.3
+    Region                        United States (us)
+    Web Interface                 http://127.0.0.1:4040
+    Forwarding                    http://18ce4bd7.ngrok.io -> localhost:80
+    Forwarding                    https://18ce4bd7.ngrok.io -> localhost:80
+
+    Connections                   ttl     opn     rt1     rt5     p50     p90
+                                  0       0       0.00    0.00    0.00    0.00
+
+Copy the http or https link for forwarding and paste it into your
+browser, you will be able to visit the Gnossis web interface for bolo.
+
+If you do not want to use ngrok, you can simply use your local built-in
+SSH client as follows:
+
+::
+
+    ssh bastion -L 4040:<ip address of your bolo server>:80 -N
+
+Then, go to http://127.0.0.1:4040 in your web browser.
+
+Out of the box, the Bolo installation will begin monitoring itself for
+general host health (the ``linux`` collector), so you should have graphs
+for bolo itself.
+
+Configuring Prometheus Agents
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Now that you have a Bolo installation, you're going to want to configure
+your other deployments to use it. To do that, you'll need to add the
+``bolo`` release to the deployment (if it isn't already there), add the
+``dbolo`` template to all the jobs you want monitored, and configure
+``dbolo`` to submit metrics to your ``bolo/0`` VM in the bolo
+deployment.
+
+**NOTE**: This may require configuration of network ACLs, security
+groups, etc. If you experience issues with this step, you might want to
+start looking in those areas first.
+
+We will use shield as an example to show you how to configure Bolo
+Agents.
+
+To add the release:
+
+::
+
+    $ cd ~/ops/shield-deployments
+    $ genesis add release bolo latest
+    $ cd ~/ops/shield-deployments/us-west-2/proto
+    $ genesis use release bolo
+
+If you do a ``make refresh manifest`` at this point, you should see a
+new release being added to the top-level ``releases`` list.
+
+To configure dbolo, you're going to want to add a line like the last one
+here to all of your job template definitions:
+
+::
+
+    jobs:
+      - name: shield
+        templates:
+          - { release: bolo, name: dbolo }
+
+Then, to configure ``dbolo`` to submit to your Bolo installation, add
+the ``dbolo.submission.address`` property either globally or per-job
+(strong recommendation for global, by the way).
+
+If you have specific monitoring requirements, above and beyond the stock
+host-health checks that the ``linux`` collector provides, you can change
+per-job (or global) properties like the dbolo.collectors properties.
+
+You can put those configuration in the ``properties.yml`` as follows:
+
+::
+
+    properties:
+      dbolo:
+        submission:
+          address: x.x.x.x # your Bolo VM IP
+        collectors:
+          - { every: 20s, run: 'linux' }
+          - { every: 20s, run: 'httpd' }
+          - { every: 20s, run: 'process -n nginx -m nginx' }
+
+Remember that you will need to supply the ``linux`` collector
+configuration, since Bolo skips the automatic ``dbolo`` settings you get
+for free when you specify your own configuration.
+
+Further Reading on Prometheus
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+More information can be found in the `Bolo BOSH Release
+README <https://github.com/cloudfoundry-community/bolo-boshrelease>`__
+which contains a wealth of information about available graphs,
+collectors, and deployment properties.
+
+Building out Environments for CFs
+====================================
 
 Now that the underlying infrastructure has been deployed, we can start
 deploying our alpha/beta/other sites, with Cloud Foundry, and any
@@ -2173,10 +2156,10 @@ and beta site, we know it is reasonable for them to be rolled out to
 other sites, like production.
 
 Alpha
-~~~~~
+-------
 
 BOSH-Lite
-^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 Since our ``alpha`` site will be a bosh lite running on AWS, we will
 need to deploy that to our `global infrastructure
@@ -2457,7 +2440,7 @@ Tadaaa! Time to commit all the changes to deployment repo, and push to
 where we're storing them long-term.
 
 Alpha Cloud Foundry
-^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~
 
 To deploy CF to our alpha environment, we will need to first ensure
 we're targeting the right Vault/BOSH:
@@ -2632,7 +2615,7 @@ And once complete, run the smoke tests for good measure:
 We now have our alpha-environment's Cloud Foundry stood up!
 
 First Beta Environment
-~~~~~~~~~~~~~~~~~~~~~~
+-------------------------
 
 Now that our ``alpha`` environment has been deployed, we can deploy our
 first beta environment to AWS. To do this, we will first deploy a BOSH
@@ -2641,7 +2624,7 @@ generated back when we built our `proto-BOSH <#proto-bosh>`__, and then
 deploy Cloud Foundry on top of it.
 
 BOSH
-^^^^
+~~~~~
 
 ::
 
@@ -2870,10 +2853,10 @@ Now it's time to move on to deploying our ``beta`` (staging) Cloud
 Foundry!
 
 Jumpboxen?
-^^^^^^^^^^
+~~~~~~~~~~~~~~
 
 Beta Cloud Foundry
-^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~
 
 To deploy Cloud Foundry, we will go back into our ``ops`` directory,
 making use of the ``cf-deployments`` repo created when we built our
@@ -3057,7 +3040,7 @@ S3 buckets yourself):
     EOF
 
 Setup RDS Database
-''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^
 
 Next, lets tackle the database situation. We will need to create RDS
 instances for the ``uaadb`` and ``ccdb``, but first we need to generate
@@ -3650,7 +3633,7 @@ right of each type of resource. It takes less than 30 minutes get limits
 increase approved through Amazon.
 
 Push An App to Beta Cloud Foundry
-'''''''''''''''''''''''''''''''''
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 After you successfully deploy the Beta CF, you can push an simple app to
 learn more about CF. In the CF world, every application and service is
@@ -3698,7 +3681,7 @@ solution in `Debug Unknown Error When You Push Your APP to
 CF <http://www.starkandwayne.com/blog/debug-unknown-error-when-you-push-your-app-to-cf/>`__.
 
 Production Environment
-~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
 Deploying the production environment will be much like deploying the
 ``beta`` environment above. You will need to deploy a BOSH Director,
@@ -3708,7 +3691,7 @@ parameters will all be different, but the procedure for deploying them
 is the same.
 
 Next Steps
-~~~~~~~~~~
+------------
 
 Lather, rinse, repeat for all additional environments (dev, prod,
 loadtest, whatever's applicable to the client).
