@@ -1,6 +1,9 @@
 # Mac Desktop Services Store file
 .DS_Store
 
+# manage local dependencies with direnv but don't commit
+.direnv
+
 # do not commit the build folder, is compiled upon changes
 build
 
