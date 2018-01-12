@@ -1039,164 +1039,201 @@ paste the following policy and modify accordingly, click
     }
 
 Deploying SHIELD
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 We'll start out with the Genesis template for SHIELD:
 
 ::
 
     $ cd ~/ops
-    $ genesis init --kit shield
+    $ genesis init -k shield
     $ cd shield-deployments
+    $ genesis new dc01-proto
+
+This will prompt for parameters required to deploy shield such as authentication, static IP, etc.
+
+Once finished, if OAuth Provider authentication was selected, open the dc01-proto.yml file that was
+generated and under the "authentication" section fill out the mapping from oauth->tenants using the
+example provided below.
 
 ::
 
-    $ genesis init -k bosh
-    $ cd ~/deployments/bosh-deployments
+    authentication:
+    - name:       Github
+      identifier: github
+      backend:    github
+      properties:
+        client_id:     client-id-here
+        client_secret: client-secret-here
+        mapping:
+          - github: starkandwayne  # <-- github org name
+            tenant: starkandwayne  # <-- shield tenant name
+            rights:
+              - team: Owners       # <-- github team name
+                role: admin        # <-- shield role name
+              - team: Engineering  #   (first match wins)
+                role: engineer
+              - role: operator     # = (default match)
 
-Next, create a new deployment named `uswest2-proto-bosh` by running the following
-Genesis command.
+          - github: starkandwayne
+            tenant: SYSTEM
+            rights:
+              - team: Engineering
+                role: admin
 
-::
-
-    $ genesis new uswest2-proto
-
-Next, you only need to answer all the questions prompted for you, a customized
-configuration file will be automatically generated for you according to your answers.
-Let's walk through all the questions.
-
-::
-
-   Generating new environment uswest-2-proto...
-
-   Using shield/0.2.1 kit...
-   
-   Checking kit pre-requisites...
-   
-   What authentication backend do you wish to use with SHIELD?
-   
-      1) UAA OAuth Integration
-      2) HTTP Basic Auth
-   
-    choice? [1-2]: 
-
-Type 2 since we are going to use Basic Auth. Next you will see:
-
-::
-
-  Known Vault targets - current target indicated with a (*):
-  (*) init	http://127.0.0.1:8200
-
-  Which Vault would you like to target?
-  >
-
-Genesis automatically detects all the Vault targets you have targeted using
-`safe <https://github.com/starkandwayne/safe>`__ command.
-
-::
-
- Now targeting init at http://127.0.0.1:8200
-
-::
-
-  Required parameter: shield_static_ip
-
-  Choose a static IP from the network in your Cloud Config.
-  External SHIELD agents will call home to this IP.
-
-  Choose a static IP for the daemon API?
-  >
-
- Use IP 10.4.1.32 and add link to the network plan
+          - github: cloudfoundry-community
+            tenant: CF Community
+            rights:
+              - role: engineer
+    - name:       UAA
+      identifier: uaa1
+      backend:    uaa
+      properties:
+        client_id:       shield-dev
+        client_secret:   s.h.i.e.l.d.
+        uaa_endpoint:    https://10.244.156.2:8443
+        skip_verify_tls: true
+        mapping:
+          - tenant: UAA          # <-- shield tenant name
+            rights:
+              - scim: uaa.admin  # <-- uaa scim right
+                role: admin      # <-- shield role
+                                #   (first match wins)
+              - scim: cloud_controller.write
+                role: engineer
+              - role: operator   # = (default match)
+          - tenant: UAA Admins Club
+            rights:
+              - scim: uaa.admin
+                role: admin
 
 Time to deploy!
 
 ::
 
-    $ genesis deploy uswest-2-proto.yml
-
-::
-
-    Using environment 'us-west-2-proto-bosh' as client 'admin'
-
-    Using deployment 'uswest-2-proto'
-
-    Checking whether release shield/7.0.2 already exists...NO
-    Using remote release `https://bosh.io/d/github.com/starkandwayne/shield-boshrelease?v=7.0.2'
+    $ genesis deploy dc01-proto
+    Acting as user 'admin' on 'dc01-proto-bosh'
+    Checking whether release shield/8.0.6 already exists...NO
+    Using remote release `https://github.com/starkandwayne/shield-boshrelease/releases/download/v8.0.6/shield-8.0.6.tgz'
 
     Director task 13
       Started downloading remote release > Downloading remote release
 
-    instance_groups:
-    - name: shield
-    jobs:
-    - name: postgres
-      properties:
-        roles:
-    - name: "<redacted>"
-    -         password: "<redacted>"
-    +         password: "<redacted>"
-    - name: shield-daemon
-      properties:
-        auth:
-          api_keys:
-    -           autoprovision: "<redacted>"
-    +           autoprovision: "<redacted>"
-    -         password: "<redacted>"
-    +         password: "<redacted>"
-        database:
-    -         password: "<redacted>"
-    +         password: "<redacted>"
-    -       ssh_private_key: "<redacted>"
-    +       ssh_private_key: "<redacted>"
-        ssl:
-    -         crt: "<redacted>"
-    +         crt: "<redacted>"
-    -         key: "<redacted>"
-    +         key: "<redacted>"
-
-    Continue? [yN]:
-
 Once that's complete, you will be able to access your SHIELD deployment,
-and start configuring your backup jobs.
+and start configuring your backup jobs via the WebUI or CLI accessable
+at the IP you specified for SHIELD.
 
-How to use SHIELD
-~~~~~~~~~~~~~~~~~~~~~~
+**Deploying SHIELD Agents**
+
+To deploy SHIELD a shield agent via  a new genesis deployment, simply 
+answer ``yes`` to ``Do you want to install SHIELD on your <deployment> for backups?`` 
+and answer the questions that follow. If you do not yet have a SHIELD deployed,
+you would say ``no`` to the above question and use the method below to deploy SHIELD
+agents.
+
+If you are adding an agent to an existing genesis deployment, modify the
+<environment>.yml file and add the following parameters.
+
+::
+
+    kit:
+        subkits:
+        - existing subkits
+        - ...
+        - shield
+        - shield-<database-type> #<- this is only for CF with an internal DB
+
+    params:
+        #Existing Parameters
+        ...
+
+        # This is usually something like `secret/path/to/keys/for/shield/agent:public`
+        # If you are unsure, use `safe tree` to find it.
+        shield_key_vault_path: secret/path/to/keys/for/shield/agent:public
+
+        # This is usually something like `secret/path/to/keys/for/shield/certs/ca:certificate`
+        # If you are unsure, use `safe tree` to find it.
+        shield_ca_vault_path: secret/path/to/keys/for/shield/certs/ca:certificate
+
+        # This is usually something like "https://shield.example.com" or "https://xxx.xxx.xxx.xxx"
+        shield_core_url: https://192.168.10.121
+
+How to Use SHIELD
+~~~~~~~~~~~~~~~~~
 
 Backup jobs for SHIELD are created and maintained in the SHIELD UI:
 
 .. image:: /images/shield_ui.png
    :alt: SHIELD UI
 
-To access the SHIELD UI, go to https://10.4.1.32. The user name is
-``shield`` and the password can be accessed in Vault by running
-``safe get secret/uswest/2/proto/shield/webui:password``. We recommend also
-storing this password in a password manager for convenience.
+To access the SHIELD UI, go to https://shield-ip. The default user 
+name is ``admin`` and the default password is ``shield``. We recommend
+changing this passowrd and then also storing it in a password manager 
+for convenience.
 
-In the SHIELD deployment, we defined a default schedule and retention
-policy as well as provided access to the blobstore. We can add
-additional policies in the SHIELD UI.
+Upon first login, SHIELD with be uninitialized and require a master
+password. This master password is used to unseal SHIELD and the
+internal encryption key storage used to perform backups. Ensure this
+password is saved in a password manager and/or vault as there is no
+way to recover or reset this password if it is forgotten. The master
+password can also be rotated under the Admin section of the WebUI or
+via the CLI. Also, whenever SHIELD is redeployed or the SHIELD daemon
+is restarted, it will come up in a ``Locked`` state and prompt admin
+users for the master password. While in this state, backups will not
+be scheduled and running backups or restores manually will fail until
+SHIELD is unsealed. The current status of SHIELD is displayed in the HUD
+at the top of the WebUI.
 
-To create a backup schedule, click on the **Schedules** tab and then
-**Create New Schedule**. Since schedule times are given in UT, it is
-helpful to include your local time in the schedule name and/or summary
-field. For example, if you were in Brisbane, Australia you might name
-your backup job "Daily at 2 AM" and then provide the schedule as "daily
-4 pm" or "daily 16:00". You can even use "daily at 16:05" if desired.
+.. image:: /images/shield_fixed_key.png
+   :alt: SHIELD Fixed Key
 
-There are actually quite a few keywords available allowing you to create
-backups that are ``hourly``, ``daily``, ``weekly``, or ``monthly`` using
-those keywords. Here are some additional backup schedules to show their
-behaviors: "hourly at 45 after", "thursdays at 23:35", "3rd Tuesday at
-2:05", and "monthly at 2:05 on 14th". Once you have provided the name,
-schedule, and optional summary click **Create** to finish.
+Upon entering the master password you will be directed to the above
+screen. This is the SHIELD key used for fixed-key encrypted backups. To
+backup SHIELD itself, you must use the fixed-key option to be able
+to recover and decrypt the archive in the event of a disaster. This
+is due to the fact that the internal encryption key storage is part 
+of shield itself. Before leaving this screen you must save this key in
+vault or a password manager as there is no way to recover this key
+once you acknowledge. The key can be rotated when you rotate the master 
+key, however the current key can not be recovered after navigating away
+from this screen.
 
-Now that you have some additional backup schedules, we're going to
-create more **retention policies** as well. Click on **Retention** and
-**Create New Retention Policy**. Similar to the schedules, it is helpful
-to include the duration in the policy name. The duration is given in
-days, so if you wanted to keep a given backup for a year you'd use
-``365`` and perhaps name the policy "1 year retention".
+**Configuring A Job**
+
+To configure SHIELD backup jobs, on the left hand sidebar select the
+`Configure a new backup job` menu option. From here it will guide you
+through a wizard to set up targets, schedules, retention policies, and
+storage systems.
+
+For this example we will backup SHIELD itself to Amazon S3. The name for
+this target will be `SHIELD`, Notes can include the reasoning for using
+fixed-key encryption or other target specifc things other operators may
+need to know when editing the job in the future.
+
+For the agent, we will select ``dc01-proto-shield/shield@z1/0 (at 192.168.10.121:5444)``.
+This is the agent that resides on the SHIELD and will be used to backup
+SHIELD itself. Generally an agent is installed on the same instance as
+the service intended to be backed up. (More on this later)
+
+The plugin used to backup SHIELD is `Local Filesystem Plugin (fs)`.
+Once selected, the parameters specfic to the plugin will be displayed
+below for plugin configuration. In this case, the Base Directory is
+`/var/vcap/store/shield`, Files to Include/Exclude can remain blank,
+and `Fixed-Key Encryption` must be checked for reasons stated above.
+Once these parameters are filled in, click next.
+
+Next, select a schedule for this jub to run. There are actually quite a 
+few parameters available allowing you to create backups that are 
+``hourly``, ``daily``, ``weekly``, or ``monthly``. Here are some 
+additional backup schedules to show their behaviors: "every 4 hours from 12:15", 
+"thursdays at 23:35", "3rd Tuesday at 2:05", and "monthly at 2:05 on 14th".
+After selecting an appropriate schedule, click next.
+
+Now that you have a backup schedule, we're going to create a **retention 
+policy** as well. With retention policies it is helpful to include the 
+duration in the policy name. The duration is given in days, so if you 
+wanted to keep a given backup for a year you'd use ``365`` and perhaps 
+name the policy "1 year retention".
 
 Something to consider: people usually like comparing "this time, last
 period" backups. By that we mean "I wonder what X looked like this time
@@ -1204,98 +1241,140 @@ last year" or "I wonder what last Monday looked like", so you might want
 to consider making your 1 year backups actually 13 months or your weekly
 backups 8 days. (And so on.)
 
-For the **storage** you *can* create additional storage configurations
-in the SHIELD UI by clicking on **Storage** and **Create New Store**.
-Currently SHIELD has an s3 plugin for storage, so your blobstore must be
-either S3 or S3-compatible. This said, due to credential management, we
-strongly encourage you to put the storage configurations in the SHIELD
-deployment itself and allow Vault to manage the credentials of the new
-blobstores. To create a new store in the UI you will need to supply the
-configuration as a JSON object, e.g.:
+Next up is configuring **sotrage systems** for the backup archives.
+Currently SHIELD has s3, gcp, azure, swift, and webdav plugins for storage. 
+For this example, we will use Amazon S3. Select a name for the storage system
+to be used for configuring future jobs and managing the storage system. Add
+any necessary notes and set a threshold for storage. This threshold will be
+used to warn via the HUD and storage tab when total archive size on that system
+reaches the threshold. For agent we will use the same one that we used to configured
+that target. Plugin will be ``Amazon S3 Storage Plugin (s3)`` with the required
+parameters being ``Access Key ID``, ``Secret Access Key``, and ``Bucket Name``.
+While optional, it can be useful to use the `Bucket Path Prefix` parameter
+to organize backups in the bucket if you plan on using this bucket for other
+storage systems, services, etc. After filling out the parameters, click next.
 
+At this point the new backup job is ready for review, notes, and a name.
+If something is incorrect, simply click the part you wish to change and
+reconfigure it to resolve the issue. Once satisfied with everything, click 
+save to create the job.
+
+**Other Notes**
+
+In addition to running at the scheduled time, you can run a job at any
+time by clicking the target on the systems page and then ``run now`` or
+via ``Run an ad hoc backup`` on the left side menu. Jobs can
+also be paused by using the SHIELD CLI with WebUI support coming soon. 
+This means that the job will not run at its scheduled time(s) until it 
+is unpaused.
+
+In order to **restore** a given backup, select ``Restore data from a backup``
+on the left side menu. You can filter your backup jobs and associated archives
+by target name. The **Systems** page gives a list of the most recent tasks and their 
+durations. Initially, most tasks are expected to have a very short duration
+but as time goes on and your environment grows you will notice the time required 
+for the various backups will increase.
+
+Backing Up Other Services
+~~~~~~~~~~~~~~~~~
+
+This section will list the target configuration for other services. That said,
+these parameters may vary from environment to environment and parameters may
+have asterisks denoting notes below to clarify these cases. Also, parameters
+denoted as ``blank`` can be left blank as they are optional in most cases,
+however they can be configured if necessary.
+
+**Bosh Director Backup**
 ::
 
-    {
-      "access_key_id": "ACCESS_KEY",
-      "bucket": "192-168-10-154-sslip-io-shield",
-      "prefix": "/DESIRED_PREFIX",
-      "s3_host": "s3.192.168.10.154.sslip.io",
-      "s3_port": "8080",
-      "secret_access_key": "SECRET_ACCESS_KEY",
-      "signature_version": "2",
-      "skip_ssl_validation": true
-    }
+    "Name": "Bosh"
+    "Notes": "Bosh Director Backup"
+    "Agent": "dc01-proto-bosh/bosh"
+    "Backup Plugin": "PostgreSQL Backup Plugin (postgres)"
+    "PostgreSQL Host": "127.0.0.1"
+    "PostgreSQL Port": "5432"
+    "PostgreSQL Username": "vcap"
+    "PostgreSQL Password": ""*
+    "Database to Backup": <blank>
+    "Path to PostgreSQL bin/directory": "/var/vcap/packages/postgres/bin/"*
+    "Fixed-Key Encryption?": <unchecked>
 
-Now that we have the where, when, and how long we need the "what". In
-SHIELD parlance this is the **target**. In a minimal configuration,
-you'll want to back up the BOSH(es) and Cloud Foundry(-ies). To add
-these as targets, go to **Targets** and **Create New Target**.
 
-In the configuration we are using here, BOSH and Cloud Foundry are both
-using postgres so the plugin name in this case will be "postgres". For
-BOSH the only database that needs to be backed up is the bosh database,
-but for Cloud Foundry we'll need to back up all of its databases.
+For ``PostgreSQL Password`` enter the literal two quote characters ``""``. This
+is essentially an empty string as the vcap user does not require a password.
 
-To backup BOSH, use the postgres plugin and the BOSH director's IP and
-port ``5444`` for the **Remote IP:Port**. The JSON configuration for a
-sample BOSH backup is:
+``Path to PostgreSQL bin/directory`` may vary from release to release. Verify
+this via ssh to the bosh director and check the ``/var/vcap/packages`` folder
+for the proper version of postgres and the bin directory.
 
+**Concourse**
 ::
 
-    {
-      "pg_user": "vcap",
-      "pg_password": "",
-      "pg_host": "127.0.0.1",
-      "pg_port": "5432",
-      "pg_bindir": "/var/vcap/packages/postgres-9.4/bin",
-      "pg_dump_args": "",
-      "pg_database": "bosh"
-    }
+    "Name": "Concourse"
+    "Notes": "Concourse Backup"
+    "Agent": "dc01-proto-concourse/db"
+    "Backup Plugin": "PostgreSQL Backup Plugin (postgres)"
+    "PostgreSQL Host": "127.0.0.1"
+    "PostgreSQL Port": "5432"
+    "PostgreSQL Username": "vcap"
+    "PostgreSQL Password": ""*
+    "Database to Backup": <blank>
+    "Path to PostgreSQL bin/directory": "/var/vcap/packages/postgres/bin/"*
+    "Fixed-Key Encryption?": <unchecked>
 
-To backup Cloud Foundry, again use the postgres plugin, the IP address
-of the ``postgres_z1`` VM, and port ``5444``. The JSON configuration for
-a sample Cloud Foundry backup is:
 
+For ``PostgreSQL Password`` enter the literal two quote characters ``""``. This
+is essentially an empty string as the vcap user does not require a password.
+
+``Path to PostgreSQL bin/directory`` may vary from release to release. Verify
+this via ssh to the bosh director and check the ``/var/vcap/packages`` folder
+for the proper version of postgres and the bin directory.
+
+**Cloud Foundry Backup**
 ::
 
-    {
-      "pg_user": "vcap",
-      "pg_password": "",
-      "pg_host": "127.0.0.1",
-      "pg_port": "5432",
-      "pg_bindir": "/var/vcap/packages/postgres-9.4.9/bin",
-      "pg_dump_args": ""
-    }
+    "Name": "Cloud Foundry"
+    "Notes": "Cloud Foundry Backup"
+    "Agent": "dc01-proto-cf/db"
+    "Backup Plugin": "PostgreSQL Backup Plugin (postgres)"
+    "PostgreSQL Host": "127.0.0.1"
+    "PostgreSQL Port": "5432"
+    "PostgreSQL Username": "shield"
+    "PostgreSQL Password": <found in vault>*
+    "Database to Backup": <blank>
+    "Path to PostgreSQL bin/directory": "/var/vcap/packages/postgres/bin/"*
+    "Fixed-Key Encryption?": <unchecked>
 
-Notice that the only difference between these configurations is the
-``pg_database`` field, used in the BOSH case to back up only the BOSH
-database itself.
+The ``PostgreSQL Password`` can be found in vault under the cf tree in
+the /postgres path. The key will be ``shield_password``. For example
+``secret/dc01/proto/cf/postgres:shield_password`` or similar.
+
+``Path to PostgreSQL bin/directory`` may vary from release to release. Verify
+this via ssh to the bosh director and check the ``/var/vcap/packages`` folder
+for the proper version of postgres and the bin directory.
+
+**Vault**
+::
+
+    "Name": "Vault"
+    "Notes": "Vault Backup"
+    "Agent": "dc01-proto-vault/vault"
+    "Backup Plugin": "Consul Backup Plugin (consul)"
+    "Consul Host/Port": "https://127.0.0.1:8500"
+    "Skip SSL Validation": <unchecked>
+    "Consul Username": <blank>*
+    "Consul Password": <blank>*
+    "Fixed-Key Encryption?": <unchecked>
+
+
+``Consul Username`` and ``Consul Password`` are blank in most Vault deployments
+if this is not the case in your environment, update accordingly.
 
 SHIELD currently has plugins for Redis, Mongo, Elasticsearch, and
 others. To see more information about the plugin list and relevant
 documentation, please check out the `SHIELD
 README <https://github.com/starkandwayne/shield>`__.
 
-In order to back up BOSH, Cloud Foundry, and your services you will need
-to use the schedules, retention policies, targets, and storage
-definitions and create a **backup job**. To create the job, go to
-**Jobs** and **Create A New Job**. This is actually the easiest part to
-configure - aside from providing the name and optional summary,
-everything else is a drop down menu. This is where good naming really
-comes in handy! Once you have selected your target, storage, schedule,
-and retention policy click **Create** to create the job.
-
-In addition to running at the scheduled time, you can run a job at any
-time by clicking the circular arrow icon for the desired job. Jobs can
-also be paused by clicking the adjacent pause icon. This means that the
-job will not run at its scheduled time(s) until it is unpaused.
-
-In order to **restore** a given backup, go to **Restore**. You can
-filter your backup jobs by date and/or target name. The **Dashboard**
-gives a list of the most recent tasks and their durations. Initially,
-most tasks are expected to have a very short duration but as time goes
-on and your environment grows you will notice the time required for the
-various backups will increase.
 
 Concourse
 ----------
