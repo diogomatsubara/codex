@@ -12,15 +12,6 @@ Then we'll give a look at what an example network topology looks like.
 
 And finally you'll get the list of pre-requisites you'll need before you can begin to get your hands dirty.
 
-Key Concepts
-------------
-
-Undifferentiated Heavy Lifting
-  This is going here, a definition for UHL.
-
-Cloud Operating System
-  Cloud Foundry is a Cloud Operating System.
-
 Benefits of Codex
 -----------------
 
