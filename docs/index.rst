@@ -19,13 +19,13 @@ Benefits of Codex
 * Guides on how to use Stark & Wayne software to manage the on-going lifecycle maintenance of each foundation deployed.
 * Recommendations from our top-notch architects who have deployed Cloud Foundry in the field for numerous Fortune 500 enterprises.
 
-.. _overview:
+.. _common:
 
 .. toctree::
    :maxdepth: 1
-   :caption: Overview
+   :caption: Network Design
 
-   overview/network
+   common/network
 
 .. _aws:
 
@@ -33,6 +33,7 @@ Benefits of Codex
    :maxdepth: 2
    :caption: Amazon Web Services
 
+   common/overview
    aws/guide
 
 .. _azure:

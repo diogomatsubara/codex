@@ -11,43 +11,6 @@ on Amazon Web Services (AWS). This guide will answer the following questions:
 (4) How do we backup CF with all of its apps and services such that in the case of disaster we can fully rebuild and restore the system?
 (5) How can we monitor CF system’s metrics and catch potential failures, preferably before they happen?
 
-
-Overview
-=========
-
-We use a colorful diagram to show the architecture of the CF ecosystem as below.
-
-.. image:: /images/levels_of_bosh.png
-   :alt: Levels of Bosh
-
-In the above diagram, BOSH (1) is the **proto-BOSH** (we will explain why we need it soon)
-, while BOSH (2) and BOSH (3) are the per-site BOSH Directors.
-
-Before we deploy anything in the above diagram, this guide will walk you though 
-how to prepare the underlying cloud infrastructure and a bastion host using Terraform.
-
-From the bastion, we setup a special BOSH Director we call the
-**proto-BOSH** server where software like Vault, Concourse, Prometheus and
-SHIELD are setup in order to give each of the environments created after
-the **proto-BOSH** key benefits of:
-
--  Secure Credential Storage and Rotation
--  Pipeline Management
--  Monitoring Framework
--  Backup and Restore Datastores
-
-Once the **proto-BOSH** environment is setup, the child environments
-will have the added benefit of being able to update their BOSH software
-as a release, rather than having to re-initialize with ``bosh-init``.
-
-This also increases the resiliency of all BOSH Directors through
-monitoring and backups with software created by Stark & Wayne's
-engineers.
-
-And visibility into the progress and health of each application,
-release, or package is available through the power of Concourse
-pipelines.
-
 Pre-requisites
 ===============
 
@@ -83,13 +46,13 @@ It's a good idea to name this user something like ``cf`` so that no one tries to
 
 2. Click ``Next: Permissions``, you will see three different ways to set permissions.
    No matter which way you select, make sure you assign **PowerUserAccess** policy
-   to your user. Let's pick ``Attach existing policies directly``, search 
-   ``PowerUserAccess`` in policy type and  check the box on the left to select 
-   the ``PowerUserAccess`` policy.This user will be able to do any operation 
+   to your user. Let's pick ``Attach existing policies directly``, search
+   ``PowerUserAccess`` in policy type and  check the box on the left to select
+   the ``PowerUserAccess`` policy.This user will be able to do any operation
    except IAM operations.
 
-3. Click ``Next: Review`` and you will see a summary about the user, click the 
-   ``Create user`` button at the right bottom and you will see user Access Key ID 
+3. Click ``Next: Review`` and you will see a summary about the user, click the
+   ``Create user`` button at the right bottom and you will see user Access Key ID
    and Secret Access Key. You can also download credentials as a file
    by click the download button on the right top corner.
 
@@ -101,7 +64,7 @@ It's a good idea to name this user something like ``cf`` so that no one tries to
 4. We will also need to create a custom user policy in order to create
    ELBs with SSL listeners. After you click on ``Users`` under IAM Services,
    click the user you just created,in the top half of the user summary panel,
-   you can see some tabs, and one of those tabs is ``Permissions``. Click on 
+   you can see some tabs, and one of those tabs is ``Permissions``. Click on
    that one and then click ``Add inline policy`` at the right bottom,
    then create a policy using the ``Custom Policy`` editor. Name it
    ``ServerCertificates`` and paste the following content into the
@@ -125,7 +88,7 @@ It's a good idea to name this user something like ``cf`` so that no one tries to
            ]
        }
 
-5. You can validate the policy by clicking on ``Validate Policy``. 
+5. You can validate the policy by clicking on ``Validate Policy``.
    Click on ``Apply Policy`` and you will be all set.
 
 Name Your VPC
@@ -347,7 +310,7 @@ process.
 Setup Bastion Host
 ===================
 
-The bastion host which is created using Terraform script in previous section 
+The bastion host which is created using Terraform script in previous section
 is the server the BOSH operator connects to, in order
 to perform commands that affect the **proto-BOSH** Director and the
 software that gets deployed by it.
@@ -392,7 +355,7 @@ your credential to connect.
 
 In forming the SSH connection command, use the ``-i`` flag to give SSH
 the path to the ``IdentityFile``. The default user on the bastion server
-is ``ubuntu``. We will create new users so each user can use their own account to 
+is ``ubuntu``. We will create new users so each user can use their own account to
 connect to the bastion host.
 
 TO DO: convert troubleshooting.md and link it here.
@@ -480,7 +443,7 @@ your bastion host. Substituting the correct IP.
 Test Login for New User
 -----------------------
 
-After you created your user and configured your SSH config, next 
+After you created your user and configured your SSH config, next
 log out ``ubuntu`` user, you'll be ready to try to connect
 via the ``Host`` alias.
 
@@ -530,8 +493,8 @@ vault-init
 .. image:: /images/bastion_step_1.png
    :alt: vault-init
 
-BOSH and its deployments have secrets. Lots of them. Components 
-like NATS and the database rely on secure passwords for 
+BOSH and its deployments have secrets. Lots of them. Components
+like NATS and the database rely on secure passwords for
 inter-component interaction. Ideally, we'd have a spinning Vault
 for storing our credentials, so that we don't have
 them on-disk or in a git repository somewhere.
@@ -641,13 +604,13 @@ proto-BOSH
 Generate BOSH Deploy
 ~~~~~~~~~~~~~~~~~~~~~
 
-We use `Genesis <https://github.com/starkandwayne/genesis>`__ to deploy BOSH and 
-other BOSH deployments. `Genesis <https://github.com/starkandwayne/genesis>`__ 
-is a tool we made to make deploying process much simpler for different IaaS and 
+We use `Genesis <https://github.com/starkandwayne/genesis>`__ to deploy BOSH and
+other BOSH deployments. `Genesis <https://github.com/starkandwayne/genesis>`__
+is a tool we made to make deploying process much simpler for different IaaS and
 multiple environments such as sandbox, staing and prod.
- 
-First setup a ``deployments`` folder in your user's home directory. All the 
-deployments repo for different software will be placed in this directory. 
+
+First setup a ``deployments`` folder in your user's home directory. All the
+deployments repo for different software will be placed in this directory.
 
 ::
 
@@ -656,7 +619,7 @@ deployments repo for different software will be placed in this directory.
 
 Next, run the following command to initialize a BOSH Genesis repo. It will pull the
 last version of `bosh-genesis-kit <https://github.com/genesis-community/bosh-genesis-kit>`__.
-The name of deployment repo is default as kit name followed by `-deployments`, 
+The name of deployment repo is default as kit name followed by `-deployments`,
 in this case it is `bosh-deployments`. If you want to give it a different name
 you can use `name` parameter to specify it.
 
@@ -681,12 +644,12 @@ Let's walk through all the questions.
    Generating new environment uswest-2-proto-bosh...
 
    Using bosh/0.1.4 kit...
-   
+
    Checking kit pre-requisites...
-   
-   
+
+
    What IaaS will BOSH be deploying VMs to?
-   
+
       1) Amazon Web Services (AWS)
       2) Microsoft Azure
       3) Google Cloud Platform (GCP)
@@ -694,31 +657,31 @@ Let's walk through all the questions.
       5) vSphere
       6) vCloud
       7) BOSH-Lite
-   
-    choice? [1-7]: 
+
+    choice? [1-7]:
 
 Type 1 since we are deploying to AWS Iaas. Next you will see:
 
 ::
 
   Is this a Proto-BOSH?
-  
+
      1) Yes
      2) No, this bosh will be deployed by another BOSH
-  
+
    choice? [1-2]:
 
 Select 1 for Proto-BOSH. Next you will be asked:
 
 ::
-  
+
   Do you want to install SHIELD on your BOSH for backups?
   [y/n]:
 
-`Shield <https://github.com/starkandwayne/shield>`__ is a standalone 
-system from S&W that can perform backup and restore 
+`Shield <https://github.com/starkandwayne/shield>`__ is a standalone
+system from S&W that can perform backup and restore
 functions for a wide variety of pluggable data systems (like Redis, PostgreSQL,
-MySQL, RabbitMQ, etc.). We suggest you backup your BOSH deployment. Type `y` 
+MySQL, RabbitMQ, etc.). We suggest you backup your BOSH deployment. Type `y`
 and you will be asked:
 
 ::
@@ -739,7 +702,7 @@ Genesis automatically detects all the Vault targets you have targeted using
 ::
 
   Required parameter: static_ip
-  
+
   This defines the IP that BOSH will be deployed on.
   It should be a an IP from the static IP pool on the network
   you are deploying the VM onto. Usually the BOSH manifest
@@ -747,7 +710,7 @@ Genesis automatically detects all the Vault targets you have targeted using
   required to create the SSL certificate for BOSH, prior
   to deploying. If you change this, make sure to
   have genesis regenerate your SSL certificate.
-  
+
   What IP should be used for your BOSH director?
   >
 
@@ -756,17 +719,17 @@ Genesis automatically detects all the Vault targets you have targeted using
 ::
 
   Required parameter: bosh_hostname
-  
+
   This is the FQDN for the above  `static_ip`. If you do not have a DNS entry for that IP, or you can simply enter 'bosh'
   What hostname will be used to access your BOSH director?
   >
 
 bosh
 
-:: 
+::
 
   Secret data required -- will be stored in Vault under secret/uswest/2/proto/bosh/bosh/aws:access_key
-  
+
   The AWS Access Key is used to authenticate BOSH to Amazon Web Services
   What is your AWS Access Key?
   access_key [hidden]:
