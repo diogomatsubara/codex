@@ -18,4 +18,4 @@ If you need an overview of Cloud Foundry, and you're just getting started, check
 
 ## Contributions
 
-When you make a contribution, the changes made to the master branch are pushed through our [CI pipeline](https://ci.starkandwayne.com/teams/main/pipelines/ultimate-guide-to-bosh) and deployed to http://www.starkandwayne.com/codex.
+When you make a contribution, the changes made to the master branch are pushed through our [CI pipeline](https://ci-ohio.starkandwayne.com/teams/starkandwayne/pipelines/codex) and deployed to http://www.starkandwayne.com/codex.
