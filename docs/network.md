@@ -135,7 +135,7 @@ deployments.
 | shield     | 10.4.1.32/28 |  16 |    1 | SHIELD Backup/Restore Core      |
 | concourse  | 10.4.1.48/28 |  16 |    1 | Runway Concourse                |
 | concourse  | 10.4.2.48/28 |  16 |    2 | Concourse overflow              |
-| Prometheus | 10.4.1.64/28 |  16 |    1 | Monitoring                      |
+| prometheus | 10.4.1.64/28 |  16 |    1 | Monitoring                      |
 | alpha site | 10.4.1.80/28 |  16 |    1 | alpha site bosh-lite            |
 
 

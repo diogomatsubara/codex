@@ -6,11 +6,16 @@ To accomplish this we'll be using some tools we've written scripts for, and some
 
 ## What You'll Need
 
-* Decide make a decision about what infrastructure provider to user
-create an account for the provider
+* Decide which infrastructure provider
+* Create your account
+* Review the network design
 
-## What Will Happen
+## What You'll Do
 
-Use terraform scripts to build network, jumpbox, and bosh director for that provider.
+Once you've picked your target infrastructure, created an account, and accepted or modified the network, you will:
 
-Connect to jumpbox.
+* Build network objects on target infrastructure
+* Create a jumpbox to bridge public and private access
+* And deploy a management BOSH director
+
+Let's take a look at the overall network design and how we recommend setting up a Cloud Foundry platform.
