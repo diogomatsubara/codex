@@ -4,7 +4,7 @@ When designing networks for BOSH and Cloud Foundry there are some terms and
 concepts to be familiar with, including the following:
 
 * [Network Address Translation]
-* [Bastion Host (jumpbox)]
+* [Jumpbox]
 * [RFC 1918]
 
 And a great tool to have installed is `sipcalc` for doing math on CIDR notaion
@@ -150,7 +150,7 @@ Once again, you can test out this network design by reading through, cloning our
 [terraform scripts], and providing your credentials.  Read more Terraform
 specific help in each guide we have here.
 
-[Bastion Host]: https://en.wikipedia.org/wiki/Bastion_host
+[Jumpbox]: https://en.wikipedia.org/wiki/Bastion_host
 [RFC 1918]: https://tools.ietf.org/html/rfc1918
 [Network Address Translation]: https://en.wikipedia.org/wiki/Network_address_translation
 [terraform scripts]: https://github.com/starkandwayne/codex/tree/master/terraform
