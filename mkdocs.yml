@@ -15,8 +15,7 @@ theme:
   name: 'material'
   custom_dir: 'theme-overrides'
   palette:
-    primary: 'orange'
-    accent: 'amber'
+    primary: 'indigo'
   feature:
     tabs: true
 
