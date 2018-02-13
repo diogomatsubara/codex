@@ -1,6 +1,4 @@
-========
-Overview
-========
+# Overview
 
 We use a colorful diagram to show the architecture of the CF ecosystem as below.
 
