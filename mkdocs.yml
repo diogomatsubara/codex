@@ -5,13 +5,13 @@ pages:
   - Amazon Web Services:
     - Introduction: aws/intro.md
   - Google Cloud Platform:
-    - Guide: gcp/guide.md
+    - Introduction: gcp/intro.md
   - Microsoft Azure:
-    - Guide: azure/guide.md
+    - Introduction: azure/intro.md
   - OpenStack:
-    - Guide: openstack/guide.md
+    - Introduction: openstack/intro.md
   - VMWare vSphere:
-    - Guide: vsphere/guide.md
+    - Introduction: vsphere/intro.md
 
 theme:
   name: 'material'

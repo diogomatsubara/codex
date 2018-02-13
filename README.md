@@ -4,17 +4,17 @@ The [Stark & Wayne Codex](http://www.starkandwayne.com/codex) makes BOSH and Clo
 
 Pick your infrastructure and let's begin!
 
-  * Amazon Web Services
-  * Google Cloud Platform
-  * Microsoft Azure
-  * OpenStack
-  * VMWare vSphere
+  * [Amazon Web Services](aws/intro/)
+  * [Google Cloud Platform](aws/intro/)
+  * [Microsoft Azure](aws/intro/)
+  * [OpenStack](aws/intro/)
+  * [VMWare vSphere](aws/intro/)
 
 ## Also Available
 
-BOSH itself and the tools surrounding it take time to learn and understand.  And then there's the complexity of the distributed systems they can deploy, manage, and monitor.  For more information about BOSH itself we recommend our [Ultimate Guide to BOSH](https://ultimateguidetobosh.com).
+BOSH itself and the tools surrounding it take time to learn and gain proficiency.  Then there's the complexity of the distributed systems they can deploy, manage, and monitor.  For more information about BOSH itself we recommend our [Ultimate Guide to BOSH](https://ultimateguidetobosh.com).
 
-If you'd like to know more about Cloud Foundry there is a Self-Paced course available the edx.org platform called [Introduction to Cloud Foundry and Cloud Native Software Architecture](https://www.edx.org/course/introduction-cloud-foundry-cloud-native-linuxfoundationx-lfs132x).
+If you need an overview of Cloud Foundry, and you're just getting started, check out this Self-Paced course: [Introduction to Cloud Foundry and Cloud Native Software Architecture](https://www.edx.org/course/introduction-cloud-foundry-cloud-native-linuxfoundationx-lfs132x).
 
 ## Contributions
 
