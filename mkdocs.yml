@@ -3,13 +3,15 @@ pages:
   - Hello:
     - Welcome: index.md
   - Amazon Web Services:
-    - Guide: aws/guide.md
-  - Microsoft Azure:
-    - Guide: azure/guide.md
+    - Introduction: aws/guide.md
   - Google Cloud Platform:
     - Guide: gcp/guide.md
+  - Microsoft Azure:
+    - Guide: azure/guide.md
   - OpenStack:
     - Guide: openstack/guide.md
+  - VMWare vSphere:
+    - Guide: vsphere/guide.md
 
 theme:
   name: 'material'
