@@ -4,7 +4,7 @@ When designing networks for BOSH and Cloud Foundry there are some terms and
 concepts to be familiar with, including the following:
 
 * [Network Address Translation]
-* [Bastion Host]
+* [Bastion Host (jumpbox)]
 * [RFC 1918]
 
 And a great tool to have installed is `sipcalc` for doing math on CIDR notaion
