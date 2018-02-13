@@ -1,7 +1,7 @@
 meta:
   name:    codex
-  # fly -t ohio-cf login -c https://ci-ohio.starkandwayne.com -n cfcommunity
-  target:  ohio-cf
+  # fly -t ohio-sw login -c https://ci-ohio.starkandwayne.com -n starkandwayne
+  target:  ohio-sw
   url:     https://ci-ohio.starkandwayne.com
 
   cf:
