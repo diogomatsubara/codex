@@ -1,7 +1,7 @@
 site_name: Stark & Wayne Codex
 pages:
   - Getting Started:
-    - Introduction: introduction.md
+    - Introduction: index.md
     - Network Design: network.md
     - Conventions: conventions.md
   - Amazon Web Services:
