@@ -3,7 +3,7 @@ pages:
   - Hello:
     - Welcome: index.md
   - Amazon Web Services:
-    - Introduction: aws/guide.md
+    - Introduction: aws/intro.md
   - Google Cloud Platform:
     - Guide: gcp/guide.md
   - Microsoft Azure:

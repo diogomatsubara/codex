@@ -1,83 +1,21 @@
-codex
-=====
+# Stark & Wayne Codex
 
-Read
-----
+The [Stark & Wayne Codex](http://www.starkandwayne.com/codex) makes BOSH and Cloud Foundry accessible to engineers, sys-admins, and operators.  Together we'll describe the process of building an entire Cloud Foundry Foundation from scratch.  But it doesn't stop there, we'll go into how to make it resilient to failures with backup software and monitoring tools.  We'll even cover pipeline based deployments, both in regard to the platform itself and for applications.
 
-http://www.starkandwayne.com/codex
+Pick your infrastructure and let's begin!
 
-Write
------
+  * Amazon Web Services
+  * Google Cloud Platform
+  * Microsoft Azure
+  * OpenStack
+  * VMWare vSphere
 
-1. Install docker_.
+## Also Available
 
-2. Clone the codex repository locally::
+BOSH itself and the tools surrounding it take time to learn and understand.  And then there's the complexity of the distributed systems they can deploy, manage, and monitor.  For more information about BOSH itself we recommend our [Ultimate Guide to BOSH](https://ultimateguidetobosh.com).
 
-	git clone git@github.com:starkandwayne/codex.git && cd codex
+If you'd like to know more about Cloud Foundry there is a Self-Paced course available the edx.org platform called [Introduction to Cloud Foundry and Cloud Native Software Architecture](https://www.edx.org/course/introduction-cloud-foundry-cloud-native-linuxfoundationx-lfs132x).
 
-3. Build and run the docker container with the latest source::
+## Contributions
 
-	make docker
-
-( Note that you can also run ``make build`` to only build or ``make run`` to directly run a previous built codex image )
-
-4. Open codex at http://127.0.0.1:8000 in your browser. Note that changes that are made locally will be reflected in the browser upon refresh.
-
-.. _docker: https://www.docker.com/
-
-About
------
-
-+------------------+-----------------------------------------------------+
-| Name             | Purpose                                             |
-+==================+=====================================================+
-| archive/         | **codex-v1** source files                           |
-+------------------+-----------------------------------------------------+
-| build/           | **sphinx-doc** local only, use ``make`` for outputs |
-+------------------+-----------------------------------------------------+
-| docs/            | **sphinx-doc** source files                         |
-+------------------+-----------------------------------------------------+
-| terraform/       | **terraform** provisioning scripts                  |
-+------------------+-----------------------------------------------------+
-| .cfignore        | **cf** optimize deployment parameters               |
-+------------------+-----------------------------------------------------+
-| .gitignore       | **git** defines files to ignore in repo             |
-+------------------+-----------------------------------------------------+
-| Makefile         | **sphinx-doc** builds ``docs`` source               |
-+------------------+-----------------------------------------------------+
-| README.rst       | this file                                           |
-+------------------+-----------------------------------------------------+
-| Staticfile       | **cf** defines project as Staticfile app            |
-+------------------+-----------------------------------------------------+
-| manifest.yml     | **cf** configures app runtime parameters            |
-+------------------+-----------------------------------------------------+
-| requirements.txt | **python** dependencies for project                 |
-+------------------+-----------------------------------------------------+
-
-Codex uses sphinx-doc_, the python documentation generator, to build the
-website into a static output of HTML webpages.  Then when the application is
-deployed it, it copies the static output to a Cloud Foundry droplet and starts
-an application instance.
-
-.. _sphinx-doc: http://www.sphinx-doc.org/en/stable/index.html
-
-Deploy
-------
-
-The Makefile at the root of this project has a *deploy* Makefile target.
-
-When calling this target with ``make deploy`` it will use the ``sphinx`` python
-module and the ``cf-cli`` commands to build and push the a sphinx-doc website.
-
-1. Login to Cloud Foundry, target the **starkandwayne** organization, with
-the **codex** space.
-
-::
-
-	cf login -a https://api.run.pivotal.io -o starkandwayne -s codex
-
-2. To deploy codex, in the root of the project run:
-
-::
-
-	make deploy
+When you make a contribution, the changes made to the master branch are pushed through our [CI pipeline](https://ci.starkandwayne.com/teams/main/pipelines/ultimate-guide-to-bosh) and deployed to http://www.starkandwayne.com/codex.

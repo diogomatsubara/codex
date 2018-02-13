@@ -1,6 +1,4 @@
-=========================
-Amazon Web Services Guide
-=========================
+# Amazon Web Services Guide
 
 Welcome to the Stark & Wayne guide to deploy, automate and manage Cloud Foundry
 on Amazon Web Services (AWS). This guide will answer the following questions:
