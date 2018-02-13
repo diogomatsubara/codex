@@ -1,1 +1,2 @@
 root: site
+location_include: includes/*.conf
