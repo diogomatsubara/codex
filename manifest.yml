@@ -8,4 +8,3 @@ applications:
   - route: www.starkandwayne.com/codex
   - route: starkandwayne.com/codex
   stack: cflinuxfs2
-  command: sed -i -e 's/    location \/ {/    location \/codex {/g' /home/vcap/app/nginx/conf/nginx.conf && $HOME/boot.sh

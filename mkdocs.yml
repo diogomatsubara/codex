@@ -26,6 +26,9 @@ theme:
     text: 'Bitter' # https://fonts.google.com/specimen/Bitter
     code: 'Ubuntu Mono'
 
+# http://www.mkdocs.org/user-guide/configuration/#site_dir
+site_dir: site/codex
+
 markdown_extensions:
   - admonition
   - codehilite
