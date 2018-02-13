@@ -2,9 +2,9 @@
 applications:
 - name: codex
   memory: 64M
-  disk_quota: 512M
+  disk_quota: 1G
   buildpack: staticfile_buildpack
-  path: build
   routes:
   - route: www.starkandwayne.com/codex
   - route: starkandwayne.com/codex
+  stack: cflinuxfs2

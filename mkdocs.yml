@@ -1,0 +1,43 @@
+site_name: Stark & Wayne Codex
+pages:
+  - Hello:
+    - Welcome: index.md
+  - Amazon Web Services:
+    - Guide: aws/guide.md
+  - Microsoft Azure:
+    - Guide: azure/guide.md
+  - Google Cloud Platform:
+    - Guide: gcp/guide.md
+  - OpenStack:
+    - Guide: openstack/guide.md
+
+theme:
+  name: 'material'
+  custom_dir: 'theme-overrides'
+  palette:
+    primary: 'orange'
+    accent: 'amber'
+  feature:
+    tabs: true
+
+  logo: 'images/favicon/favicon-64.png'
+
+  font:
+    text: 'Bitter' # https://fonts.google.com/specimen/Bitter
+    code: 'Ubuntu Mono'
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - pymdownx.betterem(smart_enable=all)
+  - pymdownx.critic
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.superfences
+  - toc(permalink=true)
+
+repo_name: 'help fix codex'
+repo_url: 'https://github.com/starkandwayne/codex'
+edit_uri: edit/master/docs/
+extra_css: [print.css]
+google_analytics: ['UA-50822525-5', 'starkandwayne.com/codex']

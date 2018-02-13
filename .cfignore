@@ -1,13 +1,6 @@
-# Also ignore these folders and files when building app.
-
-# folders
-docs
+archive
 terraform
-
-# files
-.envrc
-Makefile
+LICENSE
 manifest.yml
-README.rst
-requirements.txt
+README.md
 Staticfile
