@@ -1,5 +1,5 @@
 # Terraform Setup
 
-Clone the repo
-Set these settings
-Run this command
+* Clone the repo
+* Set these settings
+* Run this command

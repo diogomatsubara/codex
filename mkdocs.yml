@@ -5,6 +5,13 @@ pages:
     - Overview: start/overview.md
     - Network Design: start/network.md
     - Conventions: start/conventions.md
+  - Prepare Infrastructure:
+    - Options: prepare-infrastructure/options.md
+    - Amazon Web Services: prepare-infrastructure/prepare-aws.md
+    - Google Cloud Platform: prepare-infrastructure/prepare-gcp.md
+    - Microsoft Azure: prepare-infrastructure/prepare-azure.md
+    - OpenStack: prepare-infrastructure/prepare-openstack.md
+    - VMWare vSphere: prepare-infrastructure/prepare-vsphere.md
   - Terraform:
     - Setup: terraform/setup.md
     - Jumpbox: terraform/jumpbox.md
