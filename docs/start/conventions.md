@@ -9,7 +9,7 @@ local $
 `local` refers to your personal computer and `$` represents a non-privileged user.  Whereas `#` would refer to the `root` user.
 
 ```
-jumpbox #
+local #
 ```
 
 If we're not running on the local computer and need to be on the jumpbox.  We'll see `jumpbox $` preceded a reference command.
@@ -23,6 +23,8 @@ There are a couple of bosh directors we deploy.  We will attempt to keep them cl
 ```
 bosh/0 $
 ```
+
+or
 
 ```
 bosh-lite $

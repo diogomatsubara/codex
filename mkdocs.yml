@@ -1,19 +1,13 @@
 site_name: Stark & Wayne Codex
 pages:
-  - Getting Started:
+  - Start:
     - Introduction: index.md
-    - Network Design: network.md
-    - Conventions: conventions.md
-  - Amazon Web Services:
-    - Jumpbox Setup: aws/jumpbox.md
-  - Google Cloud Platform:
-    - Introduction: gcp/intro.md
-  - Microsoft Azure:
-    - Introduction: azure/intro.md
-  - OpenStack:
-    - Introduction: openstack/intro.md
-  - VMWare vSphere:
-    - Introduction: vsphere/intro.md
+    - Overview: start/overview.md
+    - Network Design: start/network.md
+    - Conventions: start/conventions.md
+  - Terraform:
+    - Setup: terraform/setup.md
+    - Jumpbox: terraform/jumpbox.md
 
 theme:
   name: 'material'

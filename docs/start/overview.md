@@ -2,8 +2,7 @@
 
 We use a colorful diagram to show the architecture of the CF ecosystem as below.
 
-.. image:: /images/levels_of_bosh.png
-   :alt: Levels of Bosh
+![Levels of Bosh][levels-of-bosh]
 
 In the above diagram, BOSH (1) is the **proto-BOSH** (we will explain why we need it soon)
 , while BOSH (2) and BOSH (3) are the per-site BOSH Directors.
@@ -32,3 +31,5 @@ engineers.
 And visibility into the progress and health of each application,
 release, or package is available through the power of Concourse
 pipelines.
+
+[levels-of-bosh]: /images/levels_of_bosh.png
