@@ -1557,7 +1557,7 @@ resource "aws_db_instance" "dev-cf-db" {
 }
 
 output "aws.rds.dev-cf-db.endpoint" {
-  value = "${aws_db_instance.dev-cf-db.endpoint}"
+  value = "${element(concat(aws_db_instance.dev-cf-db.*.endpoint, list("")), 0)}"
 }
 
 ###############################################################
@@ -1582,7 +1582,7 @@ resource "aws_db_instance" "staging-cf-db" {
 }
 
 output "aws.rds.staging-cf-db.endpoint" {
-  value = "${aws_db_instance.staging-cf-db.endpoint}"
+  value = "${element(concat(aws_db_instance.staging-cf-db.*.endpoint, list("")), 0)}"
 }
 
 ###############################################################
@@ -1608,6 +1608,7 @@ resource "aws_db_instance" "prod-cf-db" {
 
 output "aws.rds.prod-cf-db.endpoint" {
   value = "${aws_db_instance.prod-cf-db.endpoint}"
+  value = "${element(concat(aws_db_instance.prod-cf-db.*.endpoint, list("")), 0)}"
 }
 
 ######## ##       ########
@@ -1667,7 +1668,7 @@ resource "aws_elb" "dev-cf-elb" {
   tags { Name = "${var.aws_vpc_name}-dev-cf-elb" }
 }
 output "aws.elb.dev-cf-elb.dns_name" {
-  value = "${aws_elb.dev-cf-elb.dns_name}"
+  value = "${element(concat(aws_elb.dev-cf-elb.*.dns_name, list("")), 0)}"
 }
 resource "aws_elb" "dev-cf-ssh-elb" {
   count                     = "${var.aws_elb_dev_enabled}"
@@ -1692,7 +1693,7 @@ resource "aws_elb" "dev-cf-ssh-elb" {
   tags { Name = "${var.aws_vpc_name}-dev-cf-ssh-elb" }
 }
 output "aws.elb.dev-cf-ssh-elb.dns_name" {
-  value = "${aws_elb.dev-cf-ssh-elb.dns_name}"
+  value = "${element(concat(aws_elb.dev-cf-elb.*.dns_name, list("")), 0)}"
 }
 
 ###############################################################
@@ -1744,7 +1745,7 @@ resource "aws_elb" "staging-cf-elb" {
   tags { Name = "${var.aws_vpc_name}-staging-cf-elb" }
 }
 output "aws.elb.staging-cf-elb.dns_name" {
-  value = "${aws_elb.staging-cf-elb.dns_name}"
+  value = "${element(concat(aws_elb.staging-cf-elb.*.dns_name, list("")), 0)}"
 }
 resource "aws_elb" "staging-cf-ssh-elb" {
   count                     = "${var.aws_elb_staging_enabled}"
@@ -1769,7 +1770,7 @@ resource "aws_elb" "staging-cf-ssh-elb" {
   tags { Name = "${var.aws_vpc_name}-staging-cf-ssh-elb" }
 }
 output "aws.elb.staging-cf-ssh-elb.dns_name" {
-  value = "${aws_elb.staging-cf-ssh-elb.dns_name}"
+  value = "${element(concat(aws_elb.staging-cf-ssh-elb.*.dns_name, list("")), 0)}"
 }
 
 ###############################################################
@@ -1821,7 +1822,7 @@ resource "aws_elb" "prod-cf-elb" {
   tags { Name = "${var.aws_vpc_name}-prod-cf-elb" }
 }
 output "aws.elb.prod-cf-elb.dns_name" {
-  value = "${aws_elb.prod-cf-elb.dns_name}"
+  value = "${element(concat(aws_elb.prod-cf-elb.*.dns_name, list("")), 0)}"
 }
 resource "aws_elb" "prod-cf-ssh-elb" {
   count                     = "${var.aws_elb_prod_enabled}"
@@ -1846,7 +1847,7 @@ resource "aws_elb" "prod-cf-ssh-elb" {
   tags { Name = "${var.aws_vpc_name}-prod-cf-ssh-elb" }
 }
 output "aws.elb.prod-cf-ssh-elb.dns_name" {
-  value = "${aws_elb.prod-cf-ssh-elb.dns_name}"
+  value = "${element(concat(aws_elb.prod-cf-ssh-elb.*.dns_name, list("")), 0)}"
 }
 
 
