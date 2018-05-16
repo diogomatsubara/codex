@@ -157,7 +157,7 @@ resource "aws_route_table" "internal" {
   vpc_id = "${aws_vpc.default.id}"
   route {
     cidr_block = "0.0.0.0/0"
-    instance_id = "${aws_instance.nat.id}"
+    nat_gateway_id = "${aws_nat_gateway.nat.id}"
   }
   tags { Name = "${var.aws_vpc_name}-internal" }
 }
@@ -1509,22 +1509,24 @@ resource "aws_security_group" "openvpn" {
 ##   ### ##     ##    ##
 ##    ## ##     ##    ##
 
-resource "aws_instance" "nat" {
-  ami             = "${lookup(var.aws_nat_ami, var.aws_region)}"
-  instance_type   = "t2.small"
-  key_name        = "${var.aws_key_name}"
-  vpc_security_group_ids = ["${aws_security_group.dmz.id}"]
+resource "aws_nat_gateway" "nat" {
+  allocation_id   = "${aws_eip.nat.id}"
   subnet_id       = "${aws_subnet.dmz.id}"
 
-  associate_public_ip_address = true
-  source_dest_check           = false
-
   tags { Name = "nat" }
+
+  depends_on      = ["aws_internet_gateway.default"]
+}
+resource "aws_eip_association" "nat_eip_assoc" {
+  network_interface_id = "${aws_nat_gateway.nat.network_interface_id}"
+  allocation_id = "${aws_eip.nat.id}"
+}
+resource "aws_eip" "nat" {
+  vpc      = true
 }
 output "box.nat.public" {
-  value = "${aws_instance.nat.public_ip}"
+  value = "${aws_eip.nat.public_ip}"
 }
-
 
 
 ########  ########   ######
