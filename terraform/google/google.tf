@@ -1126,9 +1126,11 @@ resource "google_compute_instance" "bastion" {
   name         = "bastion"
   machine_type = "${var.bastion_machine_type}"
   zone         = "${var.google_region}-${var.google_zone_1}"
-
-  disk {
-    image = "ubuntu-os-cloud/ubuntu-1604-lts"
+  
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-1804-lts"
+    }
   }
 
   network_interface {
