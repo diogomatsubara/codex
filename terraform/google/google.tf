@@ -3,8 +3,9 @@
 # GCP BOSH + Cloud Foundry
 #
 
-variable "google_project"      {} # Your Google Region      (required)
+variable "google_project"      {} # Your Google Project Id  (required)
 variable "google_network_name" {} # Name of the Network     (required)
+#variable "google_credentials"  {} # Credential file path    
 variable "google_region"       {} # Google Region           (required)
 variable "google_zone_1"       {} # Google Zone 1           (required)
 variable "google_zone_2"       {} # Google Zone 2           (required)
@@ -20,6 +21,7 @@ variable "google_lb_prod_enabled"    { default = 0 } # Set to 1 to create the PR
 ###############################################################
 
 provider "google" {
+#  credentials = "${file("${var.google_credentials}")}"
   project = "${var.google_project}"
   region  = "${var.google_region}"
 }
