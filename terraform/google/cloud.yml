@@ -1,0 +1,281 @@
+---
+#               _  _
+#              ( `   )_
+#             (    )    `)
+#           (_   (_ .  _) _)
+#                                          _
+#                                         (  )
+#          _ .                         ( `  ) . )
+#        (  _ )_                      (_, _(  ,_)_)
+#      (_  _(_ ,)
+#                                                             |
+#               _  _                                        \ _ /
+#              ( `   )_                                   -= (_) =-
+#             (    )    `)                                  /   \
+#           (_   (_ .  _) _)                                  |
+#
+#                      _, _ .                         ( `  ) . )
+#                     ( (  _ )_                      (_, _(  ,_)_)
+#                   (_(_  _(_ ,)
+#
+# (cloud.yml)
+#
+# This is a cc-me input file, for generating one or more BOSH cloud-configs.
+# To use it, run `make` from this directory.
+#
+# For more information on using cc-me, check the github page:
+#   https://github.com/jhunt/cc-me
+#
+
+meta:
+  net:
+    template:
+      layout:  strict # strict by default
+      azs:     [z1, z2, z3]
+      dns:
+        - 8.8.8.8
+        - 8.8.4.4
+
+    ops:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.global-infra.network ))
+      limit:   (( grab meta.tf.google.subnetwork.global-infra.network ))
+      gateway: (( concat meta.tf.google.subnetwork.global-infra.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.global-infra.name ))
+
+    dev-infra:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.dev-infra.network ))
+      limit:   (( grab meta.tf.google.subnetwork.dev-infra.network ))
+      gateway: (( concat meta.tf.google.subnetwork.dev-infra.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.dev-cf-core.name ))
+    dev-cf-core:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.dev-cf-core.network ))
+      limit:   (( grab meta.tf.google.subnetwork.dev-cf-core.network ))
+      gateway: (( concat meta.tf.google.subnetwork.dev-cf-core.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.dev-cf-core.name ))
+    dev-cf-edge:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.dev-cf-edge.network ))
+      limit:   (( grab meta.tf.google.subnetwork.dev-cf-edge.network ))
+      gateway: (( concat meta.tf.google.subnetwork.dev-cf-edge.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.dev-cf-edge.name ))
+    dev-cf-runtime:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.dev-cf-runtime.network ))
+      limit:   (( grab meta.tf.google.subnetwork.dev-cf-runtime.network ))
+      gateway: (( concat meta.tf.google.subnetwork.dev-cf-runtime.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.dev-cf-runtime.name ))
+    dev-cf-svc:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.dev-cf-svc.network ))
+      limit:   (( grab meta.tf.google.subnetwork.dev-cf-svc.network ))
+      gateway: (( concat meta.tf.google.subnetwork.dev-cf-svc.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.dev-cf-svc.name ))
+
+    staging-infra:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.staging-infra.network ))
+      limit:   (( grab meta.tf.google.subnetwork.staging-infra.network ))
+      gateway: (( concat meta.tf.google.subnetwork.staging-infra.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.staging-cf-core.name ))
+    staging-cf-core:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.staging-cf-core.network ))
+      limit:   (( grab meta.tf.google.subnetwork.staging-cf-core.network ))
+      gateway: (( concat meta.tf.google.subnetwork.staging-cf-core.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.staging-cf-core.name ))
+    staging-cf-edge:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.staging-cf-edge.network ))
+      limit:   (( grab meta.tf.google.subnetwork.staging-cf-edge.network ))
+      gateway: (( concat meta.tf.google.subnetwork.staging-cf-edge.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.staging-cf-edge.name ))
+    staging-cf-runtime:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.staging-cf-runtime.network ))
+      limit:   (( grab meta.tf.google.subnetwork.staging-cf-runtime.network ))
+      gateway: (( concat meta.tf.google.subnetwork.staging-cf-runtime.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.staging-cf-runtime.name ))
+    staging-cf-svc:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.staging-cf-svc.network ))
+      limit:   (( grab meta.tf.google.subnetwork.staging-cf-svc.network ))
+      gateway: (( concat meta.tf.google.subnetwork.staging-cf-svc.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.staging-cf-svc.name ))
+
+    prod-infra:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.prod-infra.network ))
+      limit:   (( grab meta.tf.google.subnetwork.prod-infra.network ))
+      gateway: (( concat meta.tf.google.subnetwork.prod-infra.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.prod-cf-core.name ))
+    prod-cf-core:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.prod-cf-core.network ))
+      limit:   (( grab meta.tf.google.subnetwork.prod-cf-core.network ))
+      gateway: (( concat meta.tf.google.subnetwork.prod-cf-core.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.prod-cf-core.name ))
+    prod-cf-edge:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.prod-cf-edge.network ))
+      limit:   (( grab meta.tf.google.subnetwork.prod-cf-edge.network ))
+      gateway: (( concat meta.tf.google.subnetwork.prod-cf-edge.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.prod-cf-edge.name ))
+    prod-cf-runtime:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.prod-cf-runtime.network ))
+      limit:   (( grab meta.tf.google.subnetwork.prod-cf-runtime.network ))
+      gateway: (( concat meta.tf.google.subnetwork.prod-cf-runtime.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.prod-cf-runtime.name ))
+    prod-cf-svc:
+      .: (( inject meta.net.template ))
+      range:   (( grab meta.tf.google.subnetwork.prod-cf-svc.network ))
+      limit:   (( grab meta.tf.google.subnetwork.prod-cf-svc.network ))
+      gateway: (( concat meta.tf.google.subnetwork.prod-cf-svc.prefix ".1" ))
+      cloud_properties:
+        name: (( grab meta.tf.google.subnetwork.prod-cf-svc.name ))
+
+  shared:
+    azs:
+      - name: z1
+        cloud_properties:
+          zone: (( concat meta.tf.google.region "-" meta.tf.google.az1 ))
+      - name: z2
+        cloud_properties:
+          zone: (( concat meta.tf.google.region "-" meta.tf.google.az2 ))
+      - name: z3
+        cloud_properties:
+          zone: (( concat meta.tf.google.region "-" meta.tf.google.az3 ))
+
+    disk_types:
+      - { name: default,    disk_size:   2048 } #  2G
+      - { name: consul,     disk_size:   2048 } #  2G
+      - { name: concourse,  disk_size:  10240 } # 10G
+      - { name: postgres,   disk_size:   4096 } #  4G
+      - { name: blobstore,  disk_size:   4096 } #  4G
+      - { name: vault,      disk_size:   1024 } #  1G
+      - { name: bosh,       disk_size:  16384 } # 16G
+      - { name: shield,     disk_size:   2048 } #  2G
+      - { name: jumpbox,    disk_size:  51200 } # 50G
+      - { name: prometheus, disk_size:  51200 } # 50G
+
+    vm_types:
+      - { name: default,    cloud_properties: { machine_type: n1-standard-1, root_disk_size_gb: 10 } }
+      - { name: small,      cloud_properties: { machine_type: n1-standard-1, root_disk_size_gb: 10 } }
+      - { name: medium,     cloud_properties: { machine_type: n1-standard-2, root_disk_size_gb: 20 } }
+      - { name: large,      cloud_properties: { machine_type: n1-standard-4, root_disk_size_gb: 40 } }
+      - { name: runtime,    cloud_properties: { machine_type: n1-standard-4, root_disk_size_gb: 50 } }
+      - { name: blacksmith, cloud_properties: { machine_type: n1-standard-1, root_disk_size_gb: 10 } }
+      - { name: jumpbox,    cloud_properties: { machine_type: n1-standard-2, root_disk_size_gb: 20 } }
+
+    vm_extensions:
+      # for CF
+      - name: cf-elb
+      - name: ssh-elb
+      - name: 100GB_ephemeral_disk
+      - name: 50GB_ephemeral_disk
+
+    compilation:
+      workers: 5
+      reuse_compilation_vms: true
+      az: z1
+      vm_type: large
+      network: compilation
+
+environments:
+  - name: jh-dev-ops
+    .: (( inject meta.shared ))
+    networking:
+      - .: (( inject meta.net.ops ))
+        networks:
+          - { name: SKIP,        net: /29 } # reserved for proto-bosh
+          - { name: vault,       net: /30, static: 3 }
+          - { name: shield,      net: /30, static: 1 }
+          - { name: concourse,   net: /26, static: 10 }
+          - { name: compilation, net: /27 }
+      - .: (( inject meta.net.dev-infra ))
+        networks: [{ name: dev-bosh,     net: /30 }]
+      - .: (( inject meta.net.staging-infra ))
+        networks: [{ name: staging-bosh, net: /30 }]
+      - .: (( inject meta.net.prod-infra ))
+        networks: [{ name: prod-bosh,    net: /30 }]
+
+  - name: jh-dev-dev
+    .: (( inject meta.shared ))
+    networking:
+      - .: (( inject meta.net.dev-infra ))
+        networks:
+          - { name: SKIP,        net: /30 } # reserved for env bosh
+          - { name: shield,      net: /30, static: 1 }
+          - { name: concourse,   net: /26 }
+          - { name: compilation, net: /27 }
+      - .: (( inject meta.net.dev-cf-edge ))
+        networks: [{ name: cf-edge,    net: /25, static: 8 }]
+
+      - .: (( inject meta.net.dev-cf-core ))
+        networks: [{ name: cf-core,    net: /24, static: 16 }]
+
+      - .: (( inject meta.net.dev-cf-runtime ))
+        networks: [{ name: cf-runtime, net: /24, static: 16 }]
+
+      - .: (( inject meta.net.dev-cf-svc ))
+        networks: [{ name: cf-svc,     net: /24, static: 16 }]
+
+  - name: jh-dev-staging
+    .: (( inject meta.shared ))
+    networking:
+      - .: (( inject meta.net.staging-infra ))
+        networks:
+          - { name: SKIP,        net: /30 } # reserved for env bosh
+          - { name: shield,      net: /30, static: 1 }
+          - { name: concourse,   net: /26 }
+          - { name: compilation, net: /27 }
+      - .: (( inject meta.net.staging-cf-edge ))
+        networks: [{ name: cf-edge,    net: /25, static: 8 }]
+
+      - .: (( inject meta.net.staging-cf-core ))
+        networks: [{ name: cf-core,    net: /24, static: 16 }]
+
+      - .: (( inject meta.net.staging-cf-runtime ))
+        networks: [{ name: cf-runtime, net: /24, static: 16 }]
+
+      - .: (( inject meta.net.staging-cf-svc ))
+        networks: [{ name: cf-svc,     net: /24, static: 16 }]
+
+  - name: jh-dev-prod
+    .: (( inject meta.shared ))
+    networking:
+      - .: (( inject meta.net.prod-infra ))
+        networks:
+          - { name: SKIP,        net: /30 } # reserved for env bosh
+          - { name: shield,      net: /30, static: 1 }
+          - { name: concourse,   net: /26 }
+          - { name: compilation, net: /27 }
+      - .: (( inject meta.net.prod-cf-edge ))
+        networks: [{ name: cf-edge,    net: /25, static: 8 }]
+
+      - .: (( inject meta.net.prod-cf-core ))
+        networks: [{ name: cf-core,    net: /24, static: 16 }]
+
+      - .: (( inject meta.net.prod-cf-runtime ))
+        networks: [{ name: cf-runtime, net: /24, static: 16 }]
+
+      - .: (( inject meta.net.prod-cf-svc ))
+        networks: [{ name: cf-svc,     net: /24, static: 16 }]

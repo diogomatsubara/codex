@@ -9,7 +9,8 @@ variable "google_credentials"  {} # Credential file path    (required)
 variable "google_region"       {} # Google Region           (required)
 variable "google_pubkey_file"  {} # Google SSH Public Key   (required)
 variable "google_az1"          {} # Google Zone 1           (required)
-# we don't need az2 or az3; GCP doesn't  require a subnet per zone
+variable "google_az2"          {} # Google Zone 2           (required)
+variable "google_az3"          {} # Google Zone 3           (required)
 
 variable "network"              { default = "10.4" }          # First 2 octets of your /16
 variable "bastion_machine_type" { default = "n1-standard-1" } # Bastion Machine Type
@@ -27,6 +28,10 @@ provider "google" {
   project = "${var.google_project}"
   region  = "${var.google_region}"
 }
+output "google.region" { value = "${var.google_region}" }
+output "google.az1" { value = "${var.google_az1}" }
+output "google.az2" { value = "${var.google_az2}" }
+output "google.az3" { value = "${var.google_az3}" }
 
 
 
@@ -47,6 +52,9 @@ resource "google_compute_network" "default" {
 }
 output "google.network.name" {
   value = "${google_compute_network.default.name}"
+}
+output "google.network.prefix" {
+  value = "${var.network}"
 }
 
 resource "google_compute_address" "nat" {
@@ -131,6 +139,12 @@ resource "google_compute_subnetwork" "dmz" {
 output "google.subnetwork.dmz.name" {
   value = "${google_compute_subnetwork.dmz.name}"
 }
+output "google.subnetwork.dmz.prefix" {
+  value = "${var.network}.0"
+}
+output "google.subnetwork.dmz.network" {
+  value = "${google_compute_subnetwork.dmz.ip_cidr_range}"
+}
 
 
 ###############################################################
@@ -152,6 +166,12 @@ resource "google_compute_subnetwork" "global-infra" {
 output "google.subnetwork.global-infra.name" {
   value = "${google_compute_subnetwork.global-infra.name}"
 }
+output "google.subnetwork.global-infra.prefix" {
+  value = "${var.network}.1"
+}
+output "google.subnetwork.global-infra.network" {
+  value = "${google_compute_subnetwork.global-infra.ip_cidr_range}"
+}
 
 ###############################################################
 # OpenVPN - OpenVPN
@@ -164,6 +184,12 @@ resource "google_compute_subnetwork" "global-openvpn" {
 }
 output "google.subnetwork.global-openvpn.name" {
   value = "${google_compute_subnetwork.global-openvpn.name}"
+}
+output "google.subnetwork.global-openvpn.prefix" {
+  value = "${var.network}.2"
+}
+output "google.subnetwork.global-openvpn.network" {
+  value = "${google_compute_subnetwork.global-openvpn.ip_cidr_range}"
 }
 
 ###############################################################
@@ -186,6 +212,12 @@ resource "google_compute_subnetwork" "dev-infra" {
 output "google.subnetwork.dev-infra.name" {
   value = "${google_compute_subnetwork.dev-infra.name}"
 }
+output "google.subnetwork.dev-infra.prefix" {
+  value = "${var.network}.16"
+}
+output "google.subnetwork.dev-infra.network" {
+  value = "${google_compute_subnetwork.dev-infra.ip_cidr_range}"
+}
 
 ###############################################################
 # DEV-CF-EDGE - Cloud Foundry Routers
@@ -202,6 +234,12 @@ resource "google_compute_subnetwork" "dev-cf-edge" {
 }
 output "google.subnetwork.dev-cf-edge.name" {
   value = "${google_compute_subnetwork.dev-cf-edge.name}"
+}
+output "google.subnetwork.dev-cf-edge.prefix" {
+  value = "${var.network}.17"
+}
+output "google.subnetwork.dev-cf-edge.network" {
+  value = "${google_compute_subnetwork.dev-cf-edge.ip_cidr_range}"
 }
 
 ###############################################################
@@ -220,6 +258,12 @@ resource "google_compute_subnetwork" "dev-cf-core" {
 output "google.subnetwork.dev-cf-core.name" {
   value = "${google_compute_subnetwork.dev-cf-core.name}"
 }
+output "google.subnetwork.dev-cf-core.prefix" {
+  value = "${var.network}.18"
+}
+output "google.subnetwork.dev-cf-core.network" {
+  value = "${google_compute_subnetwork.dev-cf-core.ip_cidr_range}"
+}
 
 ###############################################################
 # DEV-CF-RUNTIME - Cloud Foundry Runtime
@@ -236,6 +280,12 @@ resource "google_compute_subnetwork" "dev-cf-runtime" {
 output "google.subnetwork.dev-cf-runtime.name" {
   value = "${google_compute_subnetwork.dev-cf-runtime.name}"
 }
+output "google.subnetwork.dev-cf-runtime.prefix" {
+  value = "${var.network}.19"
+}
+output "google.subnetwork.dev-cf-runtime.network" {
+  value = "${google_compute_subnetwork.dev-cf-runtime.ip_cidr_range}"
+}
 
 ###############################################################
 # DEV-CF-SVC - Cloud Foundry Services
@@ -251,6 +301,12 @@ resource "google_compute_subnetwork" "dev-cf-svc" {
 }
 output "google.subnetwork.dev-cf-svc.name" {
   value = "${google_compute_subnetwork.dev-cf-svc.name}"
+}
+output "google.subnetwork.dev-cf-svc.prefix" {
+  value = "${var.network}.20"
+}
+output "google.subnetwork.dev-cf-svc.network" {
+  value = "${google_compute_subnetwork.dev-cf-svc.ip_cidr_range}"
 }
 
 ###############################################################
@@ -273,6 +329,12 @@ resource "google_compute_subnetwork" "staging-infra" {
 output "google.subnetwork.staging-infra.name" {
   value = "${google_compute_subnetwork.staging-infra.name}"
 }
+output "google.subnetwork.staging-infra.prefix" {
+  value = "${var.network}.32"
+}
+output "google.subnetwork.staging-infra.network" {
+  value = "${google_compute_subnetwork.staging-infra.ip_cidr_range}"
+}
 
 ###############################################################
 # STAGING-CF-EDGE - Cloud Foundry Routers
@@ -289,6 +351,12 @@ resource "google_compute_subnetwork" "staging-cf-edge" {
 }
 output "google.subnetwork.staging-cf-edge.name" {
   value = "${google_compute_subnetwork.staging-cf-edge.name}"
+}
+output "google.subnetwork.staging-cf-edge.prefix" {
+  value = "${var.network}.33"
+}
+output "google.subnetwork.staging-cf-edge.network" {
+  value = "${google_compute_subnetwork.staging-cf-edge.ip_cidr_range}"
 }
 
 ###############################################################
@@ -307,6 +375,12 @@ resource "google_compute_subnetwork" "staging-cf-core" {
 output "google.subnetwork.staging-cf-core.name" {
   value = "${google_compute_subnetwork.staging-cf-core.name}"
 }
+output "google.subnetwork.staging-cf-core.prefix" {
+  value = "${var.network}.34"
+}
+output "google.subnetwork.staging-cf-core.network" {
+  value = "${google_compute_subnetwork.staging-cf-core.ip_cidr_range}"
+}
 
 ###############################################################
 # STAGING-CF-RUNTIME - Cloud Foundry Runtime
@@ -323,6 +397,12 @@ resource "google_compute_subnetwork" "staging-cf-runtime" {
 output "google.subnetwork.staging-cf-runtime.name" {
   value = "${google_compute_subnetwork.staging-cf-runtime.name}"
 }
+output "google.subnetwork.staging-cf-runtime.prefix" {
+  value = "${var.network}.35"
+}
+output "google.subnetwork.staging-cf-runtime.network" {
+  value = "${google_compute_subnetwork.staging-cf-runtime.ip_cidr_range}"
+}
 
 ###############################################################
 # STAGING-CF-SVC - Cloud Foundry Services
@@ -338,6 +418,12 @@ resource "google_compute_subnetwork" "staging-cf-svc" {
 }
 output "google.subnetwork.staging-cf-svc.name" {
   value = "${google_compute_subnetwork.staging-cf-svc.name}"
+}
+output "google.subnetwork.staging-cf-svc.prefix" {
+  value = "${var.network}.36"
+}
+output "google.subnetwork.staging-cf-svc.network" {
+  value = "${google_compute_subnetwork.staging-cf-svc.ip_cidr_range}"
 }
 
 ###############################################################
@@ -360,6 +446,12 @@ resource "google_compute_subnetwork" "prod-infra" {
 output "google.subnetwork.prod-infra.name" {
   value = "${google_compute_subnetwork.prod-infra.name}"
 }
+output "google.subnetwork.prod-infra.prefix" {
+  value = "${var.network}.48"
+}
+output "google.subnetwork.prod-infra.network" {
+  value = "${google_compute_subnetwork.prod-infra.ip_cidr_range}"
+}
 
 ###############################################################
 # PROD-CF-EDGE - Cloud Foundry Routers
@@ -376,6 +468,12 @@ resource "google_compute_subnetwork" "prod-cf-edge" {
 }
 output "google.subnetwork.prod-cf-edge.name" {
   value = "${google_compute_subnetwork.prod-cf-edge.name}"
+}
+output "google.subnetwork.prod-cf-edge.prefix" {
+  value = "${var.network}.49"
+}
+output "google.subnetwork.prod-cf-edge.network" {
+  value = "${google_compute_subnetwork.prod-cf-edge.ip_cidr_range}"
 }
 
 ###############################################################
@@ -394,6 +492,12 @@ resource "google_compute_subnetwork" "prod-cf-core" {
 output "google.subnetwork.prod-cf-core.name" {
   value = "${google_compute_subnetwork.prod-cf-core.name}"
 }
+output "google.subnetwork.prod-cf-core.prefix" {
+  value = "${var.network}.50"
+}
+output "google.subnetwork.prod-cf-core.network" {
+  value = "${google_compute_subnetwork.prod-cf-core.ip_cidr_range}"
+}
 
 ###############################################################
 # PROD-CF-RUNTIME - Cloud Foundry Runtime
@@ -410,6 +514,12 @@ resource "google_compute_subnetwork" "prod-cf-runtime" {
 output "google.subnetwork.prod-cf-runtime.name" {
   value = "${google_compute_subnetwork.prod-cf-runtime.name}"
 }
+output "google.subnetwork.prod-cf-runtime.prefix" {
+  value = "${var.network}.51"
+}
+output "google.subnetwork.prod-cf-runtime.network" {
+  value = "${google_compute_subnetwork.prod-cf-runtime.ip_cidr_range}"
+}
 
 ###############################################################
 # PROD-CF-SVC - Cloud Foundry Services
@@ -425,6 +535,12 @@ resource "google_compute_subnetwork" "prod-cf-svc" {
 }
 output "google.subnetwork.prod-cf-svc.name" {
   value = "${google_compute_subnetwork.prod-cf-svc.name}"
+}
+output "google.subnetwork.prod-cf-svc.prefix" {
+  value = "${var.network}.52"
+}
+output "google.subnetwork.prod-cf-svc.network" {
+  value = "${google_compute_subnetwork.prod-cf-svc.ip_cidr_range}"
 }
 
 

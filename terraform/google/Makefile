@@ -22,4 +22,7 @@ clean:
 	rm -f ${PLAN_FILE}
 	rm -f ${STATE_FILE}
 
-.PHONY: all manifest deploy destroy clean
+cloud:
+	spruce merge --prune meta properties.yml cloud.yml | spruce json | cc-me
+
+.PHONY: all manifest deploy destroy clean cloud
