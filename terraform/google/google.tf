@@ -5,23 +5,25 @@
 
 variable "google_project"      {} # Your Google Project Id  (required)
 variable "google_network_name" {} # Name of the Network     (required)
-#variable "google_credentials"  {} # Credential file path    
+variable "google_credentials"  {} # Credential file path    (required)
 variable "google_region"       {} # Google Region           (required)
-variable "google_zone_1"       {} # Google Zone 1           (required)
-variable "google_zone_2"       {} # Google Zone 2           (required)
-variable "google_zone_3"       {} # Google Zone 3           (required)
+variable "google_pubkey_file"  {} # Google SSH Public Key   (required)
+variable "google_az1"          {} # Google Zone 1           (required)
+# we don't need az2 or az3; GCP doesn't  require a subnet per zone
 
 variable "network"              { default = "10.4" }          # First 2 octets of your /16
 variable "bastion_machine_type" { default = "n1-standard-1" } # Bastion Machine Type
 
-variable "google_lb_dev_enabled"     { default = 0 } # Set to 1 to create the DEV LB
-variable "google_lb_staging_enabled" { default = 0 } # Set to 1 to create the STAGING LB
-variable "google_lb_prod_enabled"    { default = 0 } # Set to 1 to create the PROD LB
+variable "google_lb_dev_enabled"     { default = 1 } # Set to 1 to create the DEV LB
+variable "google_lb_staging_enabled" { default = 1 } # Set to 1 to create the STAGING LB
+variable "google_lb_prod_enabled"    { default = 1 } # Set to 1 to create the PROD LB
+
+variable "latest_ubuntu" { default = "ubuntu-os-cloud/ubuntu-1804-lts" }
 
 ###############################################################
 
 provider "google" {
-#  credentials = "${file("${var.google_credentials}")}"
+  credentials = "${file("${var.google_credentials}")}"
   project = "${var.google_project}"
   region  = "${var.google_region}"
 }
@@ -47,7 +49,66 @@ output "google.network.name" {
   value = "${google_compute_network.default.name}"
 }
 
+resource "google_compute_address" "nat" {
+  name   = "nat"
+  region = "${var.google_region}"
+}
+resource "google_compute_instance" "nat" {
+  name         = "nat"
+  machine_type = "n1-standard-1"
+  zone         = "${var.google_region}-${var.google_az1}"
 
+  boot_disk {
+    initialize_params {
+      image = "${var.latest_ubuntu}"
+    }
+  }
+
+  network_interface {
+    subnetwork = "${google_compute_subnetwork.global-infra.name}"
+    subnetwork_project = "${var.google_project}"
+    access_config {
+      nat_ip = "${google_compute_address.nat.address}"
+    }
+  }
+
+  can_ip_forward = true
+
+  tags = ["ssh"]
+
+  metadata {
+    sshKeys = "ubuntu:${file(var.google_pubkey_file)}"
+  }
+
+  metadata_startup_script = <<EOT
+#!/bin/bash
+sh -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+EOT
+}
+output "box.nat.name" {
+  value = "${google_compute_instance.nat.name}"
+}
+output "box.nat.region" {
+  value = "${var.google_region}"
+}
+output "box.nat.zone" {
+  value = "${google_compute_instance.nat.zone}"
+}
+output "box.nat.public_ip" {
+  value = "${google_compute_address.nat.address}"
+}
+
+resource "google_compute_route" "nat" {
+  name                   = "${var.google_network_name}-nat"
+  dest_range             = "0.0.0.0/0"
+  network                = "${google_compute_network.default.self_link}"
+  next_hop_instance      = "${google_compute_instance.nat.name}"
+  next_hop_instance_zone = "${var.google_region}-${var.google_az1}"
+  priority               = 800
+  tags                   = ["nattable"]
+  project                = "${var.google_project}"
+}
 
  ######  ##     ## ########  ##    ## ######## ########  ######
 ##    ## ##     ## ##     ## ###   ## ##          ##    ##    ##
@@ -71,6 +132,7 @@ output "google.subnetwork.dmz.name" {
   value = "${google_compute_subnetwork.dmz.name}"
 }
 
+
 ###############################################################
 # GLOBAL - Global Infrastructure
 #
@@ -81,54 +143,27 @@ output "google.subnetwork.dmz.name" {
 #   - Concourse (for deployment automation)
 #   - Bolo
 #
-resource "google_compute_subnetwork" "global-infra-0" {
-  name          = "${var.google_network_name}-global-infra-0"
+resource "google_compute_subnetwork" "global-infra" {
+  name          = "${var.google_network_name}-global-infra"
   network       = "${google_compute_network.default.self_link}"
   ip_cidr_range = "${var.network}.1.0/24"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.global-infra-0.name" {
-  value = "${google_compute_subnetwork.global-infra-0.name}"
-}
-resource "google_compute_subnetwork" "global-infra-1" {
-  name          = "${var.google_network_name}-global-infra-1"
-  ip_cidr_range = "${var.network}.2.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.global-infra-1.name" {
-  value = "${google_compute_subnetwork.global-infra-1.name}"
-}
-resource "google_compute_subnetwork" "global-infra-2" {
-  name          = "${var.google_network_name}-global-infra-2"
-  ip_cidr_range = "${var.network}.3.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.global-infra-2.name" {
-  value = "${google_compute_subnetwork.global-infra-2.name}"
+output "google.subnetwork.global-infra.name" {
+  value = "${google_compute_subnetwork.global-infra.name}"
 }
 
 ###############################################################
 # OpenVPN - OpenVPN
 #
-resource "google_compute_subnetwork" "global-openvpn-0" {
-  name          = "${var.google_network_name}-global-openvpn-0"
-  ip_cidr_range = "${var.network}.4.0/25"
+resource "google_compute_subnetwork" "global-openvpn" {
+  name          = "${var.google_network_name}-global-openvpn"
+  ip_cidr_range = "${var.network}.2.0/25"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.global-openvpn-0.name" {
-  value = "${google_compute_subnetwork.global-openvpn-0.name}"
-}
-resource "google_compute_subnetwork" "global-openvpn-1" {
-  name          = "${var.google_network_name}-global-openvpn-1"
-  ip_cidr_range = "${var.network}.4.128/25"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.global-openvpn-1.name" {
-  value = "${google_compute_subnetwork.global-openvpn-1.name}"
+output "google.subnetwork.global-openvpn.name" {
+  value = "${google_compute_subnetwork.global-openvpn.name}"
 }
 
 ###############################################################
@@ -142,32 +177,14 @@ output "google.subnetwork.global-openvpn-1.name" {
 #  Three zone-isolated networks are provided for HA and
 #  fault-tolerance in deployments that support / require it.
 #
-resource "google_compute_subnetwork" "dev-infra-0" {
-  name          = "${var.google_network_name}-dev-infra-0"
+resource "google_compute_subnetwork" "dev-infra" {
+  name          = "${var.google_network_name}-dev-infra"
   ip_cidr_range = "${var.network}.16.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.dev-infra-0.name" {
-  value = "${google_compute_subnetwork.dev-infra-0.name}"
-}
-resource "google_compute_subnetwork" "dev-infra-1" {
-  name          = "${var.google_network_name}-dev-infra-1"
-  ip_cidr_range = "${var.network}.17.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-infra-1.name" {
-  value = "${google_compute_subnetwork.dev-infra-1.name}"
-}
-resource "google_compute_subnetwork" "dev-infra-2" {
-  name          = "${var.google_network_name}-dev-infra-2"
-  ip_cidr_range = "${var.network}.18.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-infra-2.name" {
-  value = "${google_compute_subnetwork.dev-infra-2.name}"
+output "google.subnetwork.dev-infra.name" {
+  value = "${google_compute_subnetwork.dev-infra.name}"
 }
 
 ###############################################################
@@ -177,23 +194,14 @@ output "google.subnetwork.dev-infra-2.name" {
 #  to ensure that we can properly ACL the public-facing HTTP
 #  routers independent of the private core / services.
 #
-resource "google_compute_subnetwork" "dev-cf-edge-0" {
-  name          = "${var.google_network_name}-dev-cf-edge-0"
-  ip_cidr_range = "${var.network}.19.0/25"
+resource "google_compute_subnetwork" "dev-cf-edge" {
+  name          = "${var.google_network_name}-dev-cf-edge"
+  ip_cidr_range = "${var.network}.17.0/25"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.dev-cf-edge-0.name" {
-  value = "${google_compute_subnetwork.dev-cf-edge-0.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-edge-1" {
-  name          = "${var.google_network_name}-dev-cf-edge-1"
-  ip_cidr_range = "${var.network}.19.128/25"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-edge-1.name" {
-  value = "${google_compute_subnetwork.dev-cf-edge-1.name}"
+output "google.subnetwork.dev-cf-edge.name" {
+  value = "${google_compute_subnetwork.dev-cf-edge.name}"
 }
 
 ###############################################################
@@ -203,32 +211,14 @@ output "google.subnetwork.dev-cf-edge-1.name" {
 #  Foundry.  They are separate for reasons of isolation via
 #  Network ACLs.
 #
-resource "google_compute_subnetwork" "dev-cf-core-0" {
-  name          = "${var.google_network_name}-dev-cf-core-0"
-  ip_cidr_range = "${var.network}.20.0/24"
+resource "google_compute_subnetwork" "dev-cf-core" {
+  name          = "${var.google_network_name}-dev-cf-core"
+  ip_cidr_range = "${var.network}.18.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.dev-cf-core-0.name" {
-  value = "${google_compute_subnetwork.dev-cf-core-0.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-core-1" {
-  name          = "${var.google_network_name}-dev-cf-core-1"
-  ip_cidr_range = "${var.network}.21.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-core-1.name" {
-  value = "${google_compute_subnetwork.dev-cf-core-1.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-core-2" {
-  name          = "${var.google_network_name}-dev-cf-core-2"
-  ip_cidr_range = "${var.network}.22.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-core-2.name" {
-  value = "${google_compute_subnetwork.dev-cf-core-2.name}"
+output "google.subnetwork.dev-cf-core.name" {
+  value = "${google_compute_subnetwork.dev-cf-core.name}"
 }
 
 ###############################################################
@@ -237,32 +227,14 @@ output "google.subnetwork.dev-cf-core-2.name" {
 #  These subnets house the Cloud Foundry application runtime
 #  (either DEA-next or Diego).
 #
-resource "google_compute_subnetwork" "dev-cf-runtime-0" {
-  name          = "${var.google_network_name}-dev-cf-runtime-0"
-  ip_cidr_range = "${var.network}.23.0/24"
+resource "google_compute_subnetwork" "dev-cf-runtime" {
+  name          = "${var.google_network_name}-dev-cf-runtime"
+  ip_cidr_range = "${var.network}.19.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.dev-cf-runtime-0.name" {
-  value = "${google_compute_subnetwork.dev-cf-runtime-0.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-runtime-1" {
-  name          = "${var.google_network_name}-dev-cf-runtime-1"
-  ip_cidr_range = "${var.network}.24.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-runtime-1.name" {
-  value = "${google_compute_subnetwork.dev-cf-runtime-1.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-runtime-2" {
-  name          = "${var.google_network_name}-dev-cf-runtime-2"
-  ip_cidr_range = "${var.network}.25.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-runtime-2.name" {
-  value = "${google_compute_subnetwork.dev-cf-runtime-2.name}"
+output "google.subnetwork.dev-cf-runtime.name" {
+  value = "${google_compute_subnetwork.dev-cf-runtime.name}"
 }
 
 ###############################################################
@@ -271,32 +243,14 @@ output "google.subnetwork.dev-cf-runtime-2.name" {
 #  These subnets house Service Broker deployments for
 #  Cloud Foundry Marketplace services.
 #
-resource "google_compute_subnetwork" "dev-cf-svc-0" {
-  name          = "${var.google_network_name}-dev-cf-svc-0"
-  ip_cidr_range = "${var.network}.26.0/24"
+resource "google_compute_subnetwork" "dev-cf-svc" {
+  name          = "${var.google_network_name}-dev-cf-svc"
+  ip_cidr_range = "${var.network}.20.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.dev-cf-svc-0.name" {
-  value = "${google_compute_subnetwork.dev-cf-svc-0.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-svc-1" {
-  name          = "${var.google_network_name}-dev-cf-svc-1"
-  ip_cidr_range = "${var.network}.27.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-svc-1.name" {
-  value = "${google_compute_subnetwork.dev-cf-svc-1.name}"
-}
-resource "google_compute_subnetwork" "dev-cf-svc-2" {
-  name          = "${var.google_network_name}-dev-cf-svc-2"
-  ip_cidr_range = "${var.network}.28.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.dev-cf-svc-2.name" {
-  value = "${google_compute_subnetwork.dev-cf-svc-2.name}"
+output "google.subnetwork.dev-cf-svc.name" {
+  value = "${google_compute_subnetwork.dev-cf-svc.name}"
 }
 
 ###############################################################
@@ -310,32 +264,14 @@ output "google.subnetwork.dev-cf-svc-2.name" {
 #  Three zone-isolated networks are provided for HA and
 #  fault-tolerance in deployments that support / require it.
 #
-resource "google_compute_subnetwork" "staging-infra-0" {
-  name          = "${var.google_network_name}-staging-infra-0"
+resource "google_compute_subnetwork" "staging-infra" {
+  name          = "${var.google_network_name}-staging-infra"
   ip_cidr_range = "${var.network}.32.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.staging-infra-0.name" {
-  value = "${google_compute_subnetwork.staging-infra-0.name}"
-}
-resource "google_compute_subnetwork" "staging-infra-1" {
-  name          = "${var.google_network_name}-staging-infra-1"
-  ip_cidr_range = "${var.network}.33.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-infra-1.name" {
-  value = "${google_compute_subnetwork.staging-infra-1.name}"
-}
-resource "google_compute_subnetwork" "staging-infra-2" {
-  name          = "${var.google_network_name}-staging-infra-2"
-  ip_cidr_range = "${var.network}.34.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-infra-2.name" {
-  value = "${google_compute_subnetwork.staging-infra-2.name}"
+output "google.subnetwork.staging-infra.name" {
+  value = "${google_compute_subnetwork.staging-infra.name}"
 }
 
 ###############################################################
@@ -345,23 +281,14 @@ output "google.subnetwork.staging-infra-2.name" {
 #  to ensure that we can properly ACL the public-facing HTTP
 #  routers independent of the private core / services.
 #
-resource "google_compute_subnetwork" "staging-cf-edge-0" {
-  name          = "${var.google_network_name}-staging-cf-edge-0"
-  ip_cidr_range = "${var.network}.35.0/25"
+resource "google_compute_subnetwork" "staging-cf-edge" {
+  name          = "${var.google_network_name}-staging-cf-edge"
+  ip_cidr_range = "${var.network}.33.0/25"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.staging-cf-edge-0.name" {
-  value = "${google_compute_subnetwork.staging-cf-edge-0.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-edge-1" {
-  name          = "${var.google_network_name}-staging-cf-edge-1"
-  ip_cidr_range = "${var.network}.35.128/25"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-edge-1.name" {
-  value = "${google_compute_subnetwork.staging-cf-edge-1.name}"
+output "google.subnetwork.staging-cf-edge.name" {
+  value = "${google_compute_subnetwork.staging-cf-edge.name}"
 }
 
 ###############################################################
@@ -371,32 +298,14 @@ output "google.subnetwork.staging-cf-edge-1.name" {
 #  Foundry.  They are separate for reasons of isolation via
 #  Network ACLs.
 #
-resource "google_compute_subnetwork" "staging-cf-core-0" {
-  name          = "${var.google_network_name}-staging-cf-core-0"
-  ip_cidr_range = "${var.network}.36.0/24"
+resource "google_compute_subnetwork" "staging-cf-core" {
+  name          = "${var.google_network_name}-staging-cf-core"
+  ip_cidr_range = "${var.network}.34.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.staging-cf-core-0.name" {
-  value = "${google_compute_subnetwork.staging-cf-core-0.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-core-1" {
-  name          = "${var.google_network_name}-staging-cf-core-1"
-  ip_cidr_range = "${var.network}.37.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-core-1.name" {
-  value = "${google_compute_subnetwork.staging-cf-core-1.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-core-2" {
-  name          = "${var.google_network_name}-staging-cf-core-2"
-  ip_cidr_range = "${var.network}.38.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-core-2.name" {
-  value = "${google_compute_subnetwork.staging-cf-core-2.name}"
+output "google.subnetwork.staging-cf-core.name" {
+  value = "${google_compute_subnetwork.staging-cf-core.name}"
 }
 
 ###############################################################
@@ -405,32 +314,14 @@ output "google.subnetwork.staging-cf-core-2.name" {
 #  These subnets house the Cloud Foundry application runtime
 #  (either DEA-next or Diego).
 #
-resource "google_compute_subnetwork" "staging-cf-runtime-0" {
-  name          = "${var.google_network_name}-staging-cf-runtime-0"
-  ip_cidr_range = "${var.network}.39.0/24"
+resource "google_compute_subnetwork" "staging-cf-runtime" {
+  name          = "${var.google_network_name}-staging-cf-runtime"
+  ip_cidr_range = "${var.network}.35.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.staging-cf-runtime-0.name" {
-  value = "${google_compute_subnetwork.staging-cf-runtime-0.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-runtime-1" {
-  name          = "${var.google_network_name}-staging-cf-runtime-1"
-  ip_cidr_range = "${var.network}.40.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-runtime-1.name" {
-  value = "${google_compute_subnetwork.staging-cf-runtime-1.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-runtime-2" {
-  name          = "${var.google_network_name}-staging-cf-runtime-2"
-  ip_cidr_range = "${var.network}.41.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-runtime-2.name" {
-  value = "${google_compute_subnetwork.staging-cf-runtime-2.name}"
+output "google.subnetwork.staging-cf-runtime.name" {
+  value = "${google_compute_subnetwork.staging-cf-runtime.name}"
 }
 
 ###############################################################
@@ -439,32 +330,14 @@ output "google.subnetwork.staging-cf-runtime-2.name" {
 #  These subnets house Service Broker deployments for
 #  Cloud Foundry Marketplace services.
 #
-resource "google_compute_subnetwork" "staging-cf-svc-0" {
-  name          = "${var.google_network_name}-staging-cf-svc-0"
-  ip_cidr_range = "${var.network}.42.0/24"
+resource "google_compute_subnetwork" "staging-cf-svc" {
+  name          = "${var.google_network_name}-staging-cf-svc"
+  ip_cidr_range = "${var.network}.36.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.staging-cf-svc-0.name" {
-  value = "${google_compute_subnetwork.staging-cf-svc-0.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-svc-1" {
-  name          = "${var.google_network_name}-staging-cf-svc-1"
-  ip_cidr_range = "${var.network}.43.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-svc-1.name" {
-  value = "${google_compute_subnetwork.staging-cf-svc-1.name}"
-}
-resource "google_compute_subnetwork" "staging-cf-svc-2" {
-  name          = "${var.google_network_name}-staging-cf-svc-2"
-  ip_cidr_range = "${var.network}.44.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.staging-cf-svc-2.name" {
-  value = "${google_compute_subnetwork.staging-cf-svc-2.name}"
+output "google.subnetwork.staging-cf-svc.name" {
+  value = "${google_compute_subnetwork.staging-cf-svc.name}"
 }
 
 ###############################################################
@@ -478,32 +351,14 @@ output "google.subnetwork.staging-cf-svc-2.name" {
 #  Three zone-isolated networks are provided for HA and
 #  fault-tolerance in deployments that support / require it.
 #
-resource "google_compute_subnetwork" "prod-infra-0" {
-  name          = "${var.google_network_name}-prod-infra-0"
+resource "google_compute_subnetwork" "prod-infra" {
+  name          = "${var.google_network_name}-prod-infra"
   ip_cidr_range = "${var.network}.48.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.prod-infra-0.name" {
-  value = "${google_compute_subnetwork.prod-infra-0.name}"
-}
-resource "google_compute_subnetwork" "prod-infra-1" {
-  name          = "${var.google_network_name}-prod-infra-1"
-  ip_cidr_range = "${var.network}.49.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-infra-1.name" {
-  value = "${google_compute_subnetwork.prod-infra-1.name}"
-}
-resource "google_compute_subnetwork" "prod-infra-2" {
-  name          = "${var.google_network_name}-prod-infra-2"
-  ip_cidr_range = "${var.network}.50.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-infra-2.name" {
-  value = "${google_compute_subnetwork.prod-infra-2.name}"
+output "google.subnetwork.prod-infra.name" {
+  value = "${google_compute_subnetwork.prod-infra.name}"
 }
 
 ###############################################################
@@ -513,23 +368,14 @@ output "google.subnetwork.prod-infra-2.name" {
 #  to ensure that we can properly ACL the public-facing HTTP
 #  routers independent of the private core / services.
 #
-resource "google_compute_subnetwork" "prod-cf-edge-0" {
-  name          = "${var.google_network_name}-prod-cf-edge-0"
-  ip_cidr_range = "${var.network}.51.0/25"
+resource "google_compute_subnetwork" "prod-cf-edge" {
+  name          = "${var.google_network_name}-prod-cf-edge"
+  ip_cidr_range = "${var.network}.49.0/25"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.prod-cf-edge-0.name" {
-  value = "${google_compute_subnetwork.prod-cf-edge-0.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-edge-1" {
-  name          = "${var.google_network_name}-prod-cf-edge-1"
-  ip_cidr_range = "${var.network}.51.128/25"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-edge-1.name" {
-  value = "${google_compute_subnetwork.prod-cf-edge-1.name}"
+output "google.subnetwork.prod-cf-edge.name" {
+  value = "${google_compute_subnetwork.prod-cf-edge.name}"
 }
 
 ###############################################################
@@ -539,32 +385,14 @@ output "google.subnetwork.prod-cf-edge-1.name" {
 #  Foundry.  They are separate for reasons of isolation via
 #  Network ACLs.
 #
-resource "google_compute_subnetwork" "prod-cf-core-0" {
-  name          = "${var.google_network_name}-prod-cf-core-0"
-  ip_cidr_range = "${var.network}.52.0/24"
+resource "google_compute_subnetwork" "prod-cf-core" {
+  name          = "${var.google_network_name}-prod-cf-core"
+  ip_cidr_range = "${var.network}.50.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.prod-cf-core-0.name" {
-  value = "${google_compute_subnetwork.prod-cf-core-0.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-core-1" {
-  name          = "${var.google_network_name}-prod-cf-core-1"
-  ip_cidr_range = "${var.network}.53.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-core-1.name" {
-  value = "${google_compute_subnetwork.prod-cf-core-1.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-core-2" {
-  name          = "${var.google_network_name}-prod-cf-core-2"
-  ip_cidr_range = "${var.network}.54.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-core-2.name" {
-  value = "${google_compute_subnetwork.prod-cf-core-2.name}"
+output "google.subnetwork.prod-cf-core.name" {
+  value = "${google_compute_subnetwork.prod-cf-core.name}"
 }
 
 ###############################################################
@@ -573,32 +401,14 @@ output "google.subnetwork.prod-cf-core-2.name" {
 #  These subnets house the Cloud Foundry application runtime
 #  (either DEA-next or Diego).
 #
-resource "google_compute_subnetwork" "prod-cf-runtime-0" {
-  name          = "${var.google_network_name}-prod-cf-runtime-0"
-  ip_cidr_range = "${var.network}.55.0/24"
+resource "google_compute_subnetwork" "prod-cf-runtime" {
+  name          = "${var.google_network_name}-prod-cf-runtime"
+  ip_cidr_range = "${var.network}.51.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.prod-cf-runtime-0.name" {
-  value = "${google_compute_subnetwork.prod-cf-runtime-0.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-runtime-1" {
-  name          = "${var.google_network_name}-prod-cf-runtime-1"
-  ip_cidr_range = "${var.network}.56.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-runtime-1.name" {
-  value = "${google_compute_subnetwork.prod-cf-runtime-1.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-runtime-2" {
-  name          = "${var.google_network_name}-prod-cf-runtime-2"
-  ip_cidr_range = "${var.network}.57.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-runtime-2.name" {
-  value = "${google_compute_subnetwork.prod-cf-runtime-2.name}"
+output "google.subnetwork.prod-cf-runtime.name" {
+  value = "${google_compute_subnetwork.prod-cf-runtime.name}"
 }
 
 ###############################################################
@@ -607,32 +417,14 @@ output "google.subnetwork.prod-cf-runtime-2.name" {
 #  These subnets house Service Broker deployments for
 #  Cloud Foundry Marketplace services.
 #
-resource "google_compute_subnetwork" "prod-cf-svc-0" {
-  name          = "${var.google_network_name}-prod-cf-svc-0"
-  ip_cidr_range = "${var.network}.58.0/24"
+resource "google_compute_subnetwork" "prod-cf-svc" {
+  name          = "${var.google_network_name}-prod-cf-svc"
+  ip_cidr_range = "${var.network}.52.0/24"
   network       = "${google_compute_network.default.self_link}"
   region        = "${var.google_region}"
 }
-output "google.subnetwork.prod-cf-svc-0.name" {
-  value = "${google_compute_subnetwork.prod-cf-svc-0.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-svc-1" {
-  name          = "${var.google_network_name}-prod-cf-svc-1"
-  ip_cidr_range = "${var.network}.59.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-svc-1.name" {
-  value = "${google_compute_subnetwork.prod-cf-svc-1.name}"
-}
-resource "google_compute_subnetwork" "prod-cf-svc-2" {
-  name          = "${var.google_network_name}-prod-cf-svc-2"
-  ip_cidr_range = "${var.network}.60.0/24"
-  network       = "${google_compute_network.default.self_link}"
-  region        = "${var.google_region}"
-}
-output "google.subnetwork.prod-cf-svc-2.name" {
-  value = "${google_compute_subnetwork.prod-cf-svc-2.name}"
+output "google.subnetwork.prod-cf-svc.name" {
+  value = "${google_compute_subnetwork.prod-cf-svc.name}"
 }
 
 
@@ -646,257 +438,70 @@ output "google.subnetwork.prod-cf-svc-2.name" {
  ######  ########  ######  ###     ######   ##     ##  #######   #######  ##         ######
 
 ###############################################################
-# DMZ - De-militarized Zone
+# SSH - Ingress SSH from the outside world (or wherever)
 #
-resource "google_compute_firewall" "dmz" {
-  name    = "${var.google_network_name}-dmz"
-  network = "${google_compute_network.default.name}"
+###############################################################
+# OUTBOUND - Allow all egress traffic
+#
+resource "google_compute_firewall" "outbound" {
+  name      = "outbound"
+  network   = "${google_compute_network.default.name}"
+  direction = "EGRESS"
 
-  # Allow ICMP traffic
-  allow {
-    protocol = "icmp"
-  }
+  # Allow all TCP/UDP/SCTP/ICMP traffic
+  allow { protocol = "all" }
 
-  # Allow SSH traffic into the Bastion box
+  # no target_tags; apply to everyone!
+}
+
+###############################################################
+# SSH - Inbound SSH (for the NAT)
+#
+resource "google_compute_firewall" "ssh" {
+  name      = "ssh"
+  network   = "${google_compute_network.default.name}"
+  direction = "INGRESS"
+
+  # Allow all TCP/UDP/SCTP/ICMP traffic
   allow {
     protocol = "tcp"
     ports    = ["22"]
   }
 
   source_ranges = ["0.0.0.0/0"]
-  target_tags   = ["${var.google_network_name}-dmz"]
-}
-output "google.firewall.dmz.name" {
-  value = "${google_compute_firewall.dmz.name}"
+  target_tags   = ["ssh"]
 }
 
 ###############################################################
-# GLOBAL - Global Site
+# DMZ - De-militarized Zone
 #
-resource "google_compute_firewall" "global-internal" {
-  name    = "${var.google_network_name}-global-internal"
-  network = "${google_compute_network.default.name}"
+resource "google_compute_firewall" "dmz" {
+  name      = "dmz"
+  network   = "${google_compute_network.default.name}"
+  direction = "INGRESS"
 
-  # Allow ICMP traffic
-  allow {
-    protocol = "icmp"
-  }
-
-  # Allow TCP traffic
-  allow {
-    protocol = "tcp"
-  }
-
-  # Allow UDP traffic
-  allow {
-    protocol = "udp"
-  }
-
-  source_tags = ["${var.google_network_name}-global-internal"]
-  target_tags = ["${var.google_network_name}-global-internal"]
-}
-output "google.firewall.global-internal.name" {
-  value = "${google_compute_firewall.global-internal.name}"
-}
-
-resource "google_compute_firewall" "global-external" {
-  name    = "${var.google_network_name}-global-external"
-  network = "${google_compute_network.default.name}"
-
-  # Allow HTTP traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-
-  # Allow HTTPS traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["443"]
-  }
+  # Allow all TCP/UDP/SCTP/ICMP traffic
+  allow { protocol = "all" }
 
   source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.google_network_name}-global-external"]
-}
-output "google.firewall.global-external.name" {
-  value = "${google_compute_firewall.global-external.name}"
+  target_tags   = ["dmz"]
 }
 
 ###############################################################
-# DEV - Development Site
+# INTERNAL - Allow us to talk to ourselves (for therapy)
 #
-resource "google_compute_firewall" "dev-internal" {
-  name    = "${var.google_network_name}-dev-internal"
-  network = "${google_compute_network.default.name}"
 
-  # Allow ICMP traffic
-  allow {
-    protocol = "icmp"
-  }
+resource "google_compute_firewall" "internal" {
+  name      = "internal"
+  network   = "${google_compute_network.default.name}"
+  direction = "INGRESS"
 
-  # Allow TCP traffic
-  allow {
-    protocol = "tcp"
-  }
+  # Allow all traffic from us, to us
+  allow { protocol = "all" }
 
-  # Allow UDP traffic
-  allow {
-    protocol = "udp"
-  }
-
-  source_tags = ["${var.google_network_name}-dev-internal"]
-  target_tags = ["${var.google_network_name}-dev-internal"]
+  source_ranges = ["${var.network}.0.0/16"]
+  # no target_tags; apply to everyone!
 }
-output "google.firewall.dev-internal.name" {
-  value = "${google_compute_firewall.dev-internal.name}"
-}
-
-resource "google_compute_firewall" "dev-external" {
-  name    = "${var.google_network_name}-dev-external"
-  network = "${google_compute_network.default.name}"
-
-  # Allow HTTP traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-
-  # Allow HTTPS traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["443"]
-  }
-
-  # Allow Diego SSH traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["2222"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.google_network_name}-dev-external"]
-}
-output "google.firewall.dev-external.name" {
-  value = "${google_compute_firewall.dev-external.name}"
-}
-
-###############################################################
-# STAGING - Staging Site
-#
-resource "google_compute_firewall" "staging-internal" {
-  name    = "${var.google_network_name}-staging-internal"
-  network = "${google_compute_network.default.name}"
-
-  # Allow ICMP traffic
-  allow {
-    protocol = "icmp"
-  }
-
-  # Allow TCP traffic
-  allow {
-    protocol = "tcp"
-  }
-
-  # Allow UDP traffic
-  allow {
-    protocol = "udp"
-  }
-
-  source_tags = ["${var.google_network_name}-staging-internal"]
-  target_tags = ["${var.google_network_name}-staging-internal"]
-}
-output "google.firewall.staging-internal.name" {
-  value = "${google_compute_firewall.staging-internal.name}"
-}
-
-resource "google_compute_firewall" "staging-external" {
-  name    = "${var.google_network_name}-staging-external"
-  network = "${google_compute_network.default.name}"
-
-  # Allow HTTP traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-
-  # Allow HTTPS traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["443"]
-  }
-
-  # Allow Diego SSH traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["2222"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.google_network_name}-staging-external"]
-}
-output "google.firewall.staging-external.name" {
-  value = "${google_compute_firewall.staging-external.name}"
-}
-
-###############################################################
-# PROD - Production Site
-#
-resource "google_compute_firewall" "prod-internal" {
-  name    = "${var.google_network_name}-prod-internal"
-  network = "${google_compute_network.default.name}"
-
-  # Allow ICMP traffic
-  allow {
-    protocol = "icmp"
-  }
-
-  # Allow TCP traffic
-  allow {
-    protocol = "tcp"
-  }
-
-  # Allow UDP traffic
-  allow {
-    protocol = "udp"
-  }
-
-  source_tags = ["${var.google_network_name}-prod-internal"]
-  target_tags = ["${var.google_network_name}-prod-internal"]
-}
-output "google.firewall.prod-internal.name" {
-  value = "${google_compute_firewall.prod-internal.name}"
-}
-
-resource "google_compute_firewall" "prod-external" {
-  name    = "${var.google_network_name}-prod-external"
-  network = "${google_compute_network.default.name}"
-
-  # Allow HTTP traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["80"]
-  }
-
-  # Allow HTTP traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["443"]
-  }
-
-  # Allow Diego SSH traffic
-  allow {
-    protocol = "tcp"
-    ports    = ["2222"]
-  }
-
-  source_ranges = ["0.0.0.0/0"]
-  target_tags = ["${var.google_network_name}-prod-external"]
-}
-output "google.firewall.prod-external.name" {
-  value = "${google_compute_firewall.prod-external.name}"
-}
-
-
 
 ##       ########   ######
 ##       ##     ## ##    ##
@@ -927,16 +532,14 @@ resource "google_compute_http_health_check" "dev-cf" {
   unhealthy_threshold = 2
   port                = 80
   request_path        = "/info"
-  host                = "api.system.${google_compute_address.dev-cf.address}.xip.io"
+  host                = "api.system.${google_compute_address.dev-cf.address}.netip.cc"
 }
 resource "google_compute_target_pool" "dev-cf" {
   count  = "${var.google_lb_dev_enabled}"
   name   = "${var.google_network_name}-dev-cf"
   region = "${var.google_region}"
 
-  health_checks = [
-    "${google_compute_http_health_check.dev-cf.name}",
-  ]
+  health_checks = [ "${google_compute_http_health_check.dev-cf.name}" ]
 }
 resource "google_compute_forwarding_rule" "dev-cf-http" {
   count       = "${var.google_lb_dev_enabled}"
@@ -994,7 +597,7 @@ resource "google_compute_http_health_check" "staging-cf" {
   unhealthy_threshold = 2
   port                = 80
   request_path        = "/info"
-  host                = "api.system.${google_compute_address.staging-cf.address}.xip.io"
+  host                = "api.system.${google_compute_address.staging-cf.address}.netip.cc"
 }
 resource "google_compute_target_pool" "staging-cf" {
   count  = "${var.google_lb_staging_enabled}"
@@ -1061,7 +664,7 @@ resource "google_compute_http_health_check" "prod-cf" {
   unhealthy_threshold = 2
   port                = 80
   request_path        = "/info"
-  host                = "api.system.${google_compute_address.prod-cf.address}.xip.io"
+  host                = "api.system.${google_compute_address.prod-cf.address}.netip.cc"
 }
 resource "google_compute_target_pool" "prod-cf" {
   count  = "${var.google_lb_prod_enabled}"
@@ -1125,11 +728,11 @@ resource "google_compute_address" "bastion" {
 resource "google_compute_instance" "bastion" {
   name         = "bastion"
   machine_type = "${var.bastion_machine_type}"
-  zone         = "${var.google_region}-${var.google_zone_1}"
-  
+  zone         = "${var.google_region}-${var.google_az1}"
+
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-1804-lts"
+      image = "${var.latest_ubuntu}"
     }
   }
 
@@ -1144,7 +747,11 @@ resource "google_compute_instance" "bastion" {
     scopes = ["cloud-platform"]
   }
 
-  tags = ["${google_compute_firewall.dmz.name}", "${var.google_network_name}-global-internal"]
+  tags = ["dmz"]
+
+  metadata {
+    sshKeys = "ubuntu:${file(var.google_pubkey_file)}"
+  }
 
   metadata_startup_script = <<EOT
 #!/bin/bash
