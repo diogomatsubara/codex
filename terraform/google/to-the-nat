@@ -3,4 +3,4 @@ ip=$(spruce json properties.yml | jq -r '.meta.tf.box.nat.public_ip')
 who=ubuntu
 
 set -x
-ssh -i keys/gce $who@$ip
+ssh -i keys/gce $who@$ip "$@"
