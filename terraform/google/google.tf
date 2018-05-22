@@ -83,7 +83,7 @@ resource "google_compute_instance" "nat" {
   metadata_startup_script = <<EOT
 #!/bin/bash
 sh -c "echo 1 > /proc/sys/net/ipv4/ip_forward"
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -o $(ip route get 8.8.8.8 | head -n1 | sed -e 's/.*dev \(.*\) src.*/\1/') -j MASQUERADE
 EOT
 }
 output "box.nat.name" {
