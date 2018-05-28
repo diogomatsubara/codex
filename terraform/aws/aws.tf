@@ -1517,16 +1517,13 @@ resource "aws_nat_gateway" "nat" {
 
   depends_on      = ["aws_internet_gateway.default"]
 }
-resource "aws_eip_association" "nat_eip_assoc" {
-  network_interface_id = "${aws_nat_gateway.nat.network_interface_id}"
-  allocation_id = "${aws_eip.nat.id}"
-}
 resource "aws_eip" "nat" {
   vpc      = true
 }
 output "box.nat.public" {
   value = "${aws_eip.nat.public_ip}"
 }
+
 
 
 ########  ########   ######
